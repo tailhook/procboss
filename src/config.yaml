@@ -44,15 +44,46 @@ __types__:
 
   process:
     user: !String
-      default: ""
       description: >
         User name or uid to setuid before starting (and after bindding
         sockets). Ignored when not running as root.
     group: !String
-      default: ""
       description: >
         Group name or gid to setuid before starting (and after bindding
         sockets). Ignored when not running as root.
+    chroot: !String
+      description: >
+        Path for chroot to jail process before starting (and after binding
+        sockets). Ignored when not running as root.
+    limits:
+      core: !UInt
+        default: 0
+        description: >
+          Maximum size of core file in bytes (see man setrlimit)
+      cpu: !UInt
+        default: 0
+        description: >
+          Maximum amount of CPU time in seconds (see man setrlimit)
+      data: !UInt
+        default: 0
+        description: >
+          Maximum size of process' data segment (see man setrlimit)
+      fsize: !UInt
+        default: 0
+        description: >
+          Maximum size file created by a process (see man setrlimit)
+      nofile: !UInt
+        default: 0
+        description: >
+          Maximum number of file descriptors (see man setrlimit)
+      stack: !UInt
+        default: 0
+        description: >
+          Maximum size of process' stack in bytes (see man setrlimit)
+      as: !UInt
+        default: 0
+        description: >
+          Maximum address space size for a process (see man setrlimit)
     executable-path: !File
       description: >
         Path to executable to run. Full path is used for security
@@ -61,6 +92,13 @@ __types__:
       description: >
         Arguments of the executable. Including name of the executable itself
         (or in other words arguments starting with argv[0]).
+    work-dir: !String
+      description: >
+        Working directory for running command.
+    umask: !UInt
+      default: 0
+      description: >
+        Umask to set for the process.
     environ: !Mapping
       key-element: !String
       value-element: !String
