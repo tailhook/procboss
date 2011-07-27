@@ -1,0 +1,95 @@
+
+__meta__:
+
+  program-name: boss
+  default-config: /etc/bossd.yaml
+  description: |
+    Process supervisor
+
+
+__types__:
+
+  file:
+    __tags__:
+      __property__: type
+      undefined: 0
+      Tcp: 1
+      UnixSocket: 2
+      File: 3
+    path: !String
+      default: ""
+      description: >
+        Path to the unix socket or file to open
+    flags: !String
+      default: ""
+      description: >
+        Flags for file opening. In stdlib's format
+        (only "r", "r+", "w", "w+", "a" are supported)
+    mode: !Int
+      default: 0700
+      description: >
+        Mode to chmod file or unix socket after opening. 0700 by default.
+    host: !String
+      default: ""
+      description: >
+        Host to bind tcp socket to. Only IPv4 addresses (and not hostnames)
+        are supported so far.
+    port: !UInt
+      default: 0
+      min: 1
+      max: 65535
+      description: >
+        Port to bind tcp socket to (can be < 1024 is boss is run as root). By
+        default is zero, which means dynamically alocated port.
+
+  process:
+    user: !String
+      default: ""
+      description: >
+        User name or uid to setuid before starting (and after bindding
+        sockets). Ignored when not running as root.
+    group: !String
+      default: ""
+      description: >
+        Group name or gid to setuid before starting (and after bindding
+        sockets). Ignored when not running as root.
+    executable-path: !File
+      description: >
+        Path to executable to run. Full path is used for security
+    arguments: !Array
+      element: !String ~
+      description: >
+        Arguments of the executable. Including name of the executable itself
+        (or in other words arguments starting with argv[0]).
+    environ: !Mapping
+      key-element: !String
+      value-element: !String
+      description: >
+        Process' environment
+    files: !Mapping
+      key-element: !Int ~
+      value-element: !Struct file
+      description: >
+        Files to open before setuid and exec. Useful to open files as root and
+        then dropping privileges. This is a mapping from descriptor number to
+        a file definition structure.
+
+bossrun:
+  failfast: !Bool
+    default: no
+    description: >
+      Fail (and stop all processes) if one of the processes dies. Overrides
+      restart option.
+    command-line: [-F, --failfast]
+  restart: !Bool
+    default: no
+    description: >
+      Restart if one of the processes dies.
+    command-line: [-R, --restart]
+
+Processes: !Mapping
+  key-element: !String
+    description: >
+      Process name
+  value-element: !Struct process
+

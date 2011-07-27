@@ -1,0 +1,64 @@
+# Some example of embedded producer consumer code
+#
+# In practice you will run something like python, db and web server
+#
+
+bossrun:
+  failfast: yes
+  restart: no
+
+Processes:
+  producer:
+    executable-path: /usr/bin/python
+    arguments:
+      - python-producer  # fake name for easier grepping ps
+      - -c
+      - |
+        import socket
+        import time
+        from itertools import count
+
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        while True:
+          try:
+            sock.connect('/tmp/procontest.sock')
+          except socket.error:
+            continue
+          else:
+            break
+
+        for i in count():
+          if not (i % 1000):
+            print('Messages sent', i)
+          sock.send(b'hello\n')
+          time.sleep(0.001)
+  consumer:
+    executable-path: /usr/bin/python
+    arguments:
+      - python-consumer  # fake name for easier grepping ps
+      - -c
+      - |
+        import socket
+        import os
+        from itertools import count
+
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        try: os.unlink('/tmp/procontest.sock')
+        except OSError: pass
+        sock.bind('/tmp/procontest.sock')
+        sock.listen(1)
+        oldtot = tot = 0
+        while True:
+          cli, addr = sock.accept()
+          while True:
+            data = cli.recv(1024)
+            if not data:
+              break
+            tot += len(data)
+            if tot > oldtot + 4096:
+              print("Bytes read", tot)
+              oldtot = tot
+
+
+
+
