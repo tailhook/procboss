@@ -12,10 +12,10 @@ __types__:
   file:
     __tags__:
       __property__: type
-      undefined: 0
+      __default__: File
+      File: 0
       Tcp: 1
       UnixSocket: 2
-      File: 3
     path: !String
       default: ""
       description: >
