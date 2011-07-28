@@ -18,20 +18,18 @@ Processes:
         import time
         from itertools import count
 
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         while True:
+          sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
           try:
             sock.connect('/tmp/procontest.sock')
+            for i in count():
+              if not (i % 1000):
+                print('Messages sent', i)
+              sock.send(b'hello\n')
+              time.sleep(0.001)
           except socket.error:
             continue
-          else:
-            break
 
-        for i in count():
-          if not (i % 1000):
-            print('Messages sent', i)
-          sock.send(b'hello\n')
-          time.sleep(0.001)
   consumer:
     executable-path: /usr/bin/python
     arguments:

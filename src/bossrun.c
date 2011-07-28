@@ -9,13 +9,16 @@
 #include <assert.h>
 #include <signal.h>
 #include <poll.h>
+#include <ctype.h>
 
 #include "config.h"
 #include "runcommand.h"
+#include "linenoise.h"
 
 config_main_t config;
 int signal_fd;
-int stopping = 0;
+int stopping = FALSE;
+int nostdin = FALSE;
 
 void init_signals() {
     sigset_t mask;
@@ -48,14 +51,24 @@ void send_all(int sig) {
 }
 
 void decide_dead(config_process_t *process) {
-    if(config.bossrun.failfast) {
-        if(!stopping) {
-            stopping = TRUE;
-            send_all(SIGTERM);
-        }
+    if(stopping) return;
+    if(config.bossrun.failfast && !process->_entry.pending_restart) {
+        stopping = TRUE;
+        send_all(SIGTERM);
         return;
     }
-    if(config.bossrun.restart) {
+    if(config.bossrun.restart || process->_entry.pending_restart) {
+        fork_and_run(process);
+    }
+}
+
+void restart_process(config_process_t *process) {
+    status_t s = process->_entry.status;
+    if(s == PROC_STARTING || s == PROC_ALIVE) {
+        process->_entry.pending_restart = TRUE;
+        process->_entry.status = PROC_STOPPING;
+        kill(process->_entry.pid, SIGTERM);
+    } else if(s != PROC_STOPPING) {
         fork_and_run(process);
     }
 }
@@ -135,6 +148,31 @@ void reap_signal() {
     }
 }
 
+void read_stdin() {
+    char data[1024];
+    int res = read(0, data, sizeof(data));
+    if(res == 0) return;
+    if(res < 0) {
+        if(res < 0) {
+            if(errno == EINTR || errno == EAGAIN)
+                return;
+            perror("Can't read from stdin");
+            abort();
+        }
+    }
+    if(res > strlen("restart ")
+        && !strncmp(data, "restart ", strlen("restart "))) {
+        char *procname = data + strlen("restart ");
+        int proclen = res - strlen("restart ");
+        while(isspace(procname[--proclen]));
+        CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+            if(!strncmp(item->key, procname, proclen)) {
+                restart_process(&item->value);
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     config_load(&config, argc, argv);
     init_signals();
@@ -142,11 +180,13 @@ int main(int argc, char **argv) {
         fork_and_run(&item->value);
     }
     while(live_processes > 0) {
-        struct pollfd socks[1] = {
+        struct pollfd socks[2] = {
             { fd: signal_fd,
               events: POLLIN },
+            { fd: 0,
+              events: POLLIN },
             };
-        int res = poll(socks, 1, -1);
+        int res = poll(socks, nostdin ? 1 : 2, -1);
         if(res < 0) {
             if(errno == EINTR || errno == EAGAIN) {
                 continue;
@@ -155,7 +195,12 @@ int main(int argc, char **argv) {
             abort();
         }
         if(res) {
-            reap_signal();
+            if(socks[0].revents & POLLIN) {
+                reap_signal();
+            }
+            if(socks[1].revents & POLLIN) {
+                read_stdin();
+            }
         }
     }
     config_free(&config);

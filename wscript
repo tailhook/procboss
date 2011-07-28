@@ -30,9 +30,10 @@ def build(bld):
             'src/runcommand.c',
             'src/bossrun.c',
             'src/entry.c',
+            'linenoise/linenoise.c',
             ],
         target       = 'bossrun',
-        includes     = ['src'],
+        includes     = ['src', 'linenoise'],
         defines      = [
             'LOG_STRIP_PATH="../src/"',
             ],

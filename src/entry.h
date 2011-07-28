@@ -14,6 +14,7 @@ typedef enum {
 
 typedef struct process_entry_s {
     status_t status;
+    int pending_restart;
     pid_t pid;
 } process_entry_t;
 
