@@ -72,18 +72,15 @@ void reap_children() {
             }
             break;
         }
-        printf("CHILD %d\n", pid);
         CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
             status_t s = item->value._entry.status;
             if((s == PROC_STARTING || s == PROC_ALIVE
                 || s == PROC_STOPPING) && item->value._entry.pid == pid) {
                 item->value._entry.status = PROC_DEAD;
                 live_processes -= 1;
-                printf("LIVE LEFT %d\n", live_processes);
 
                 decide_dead(&item->value);
 
-                printf("LIVE NOW %d\n", live_processes);
                 break;
             }
         }
