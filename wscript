@@ -29,6 +29,7 @@ def build(bld):
             'src/config.yaml',
             'src/runcommand.c',
             'src/bossrun.c',
+            'src/entry.c',
             ],
         target       = 'bossrun',
         includes     = ['src'],

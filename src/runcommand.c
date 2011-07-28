@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#define _POSIX_SOURCE
 #include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -14,6 +15,7 @@
 #include <grp.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <signal.h>
 
 #include "runcommand.h"
 
@@ -166,10 +168,19 @@ static void drop_privileges(config_process_t *process) {
 
 int fork_and_run(config_process_t *process) {
     int res = fork();
-    if(res < 0)
+    if(res < 0) {
+        process->_entry.status = PROC_ERROR;
         return -1;  // Error occured
-    if(res > 0)
+    }
+    if(res > 0) {
+        process->_entry.status = PROC_STARTING;
+        process->_entry.pid = res;
+        live_processes += 1;
         return res; // We are parent, just return pid
+    }
+    sigset_t mask;
+    sigfillset(&mask);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
     open_files(process);
     set_limits(process);

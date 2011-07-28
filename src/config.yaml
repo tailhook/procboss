@@ -5,6 +5,8 @@ __meta__:
   default-config: /etc/bossd.yaml
   description: |
     Process supervisor
+  c_include:
+  - entry.h
 
 
 __types__:
@@ -111,6 +113,7 @@ __types__:
         Files to open before setuid and exec. Useful to open files as root and
         then dropping privileges. This is a mapping from descriptor number to
         a file definition structure.
+    _entry: !CType process_entry_t
 
 bossrun:
   failfast: !Bool
@@ -124,6 +127,23 @@ bossrun:
     description: >
       Restart if one of the processes dies.
     command-line: [-R, --restart]
+  stop-signals:
+    sigint: !Bool
+      default: yes
+      description: >
+        Stop all processes when SIGINT received
+    sigterm: !Bool
+      default: yes
+      description: >
+        Stop all processes when SIGTERM received
+    sigquit: !Bool
+      default: yes
+      description: >
+        Stop all processes when SIGQUIT received
+    sighup: !Bool
+      default: no
+      description: >
+        Stop all processes when SIGHUP received
 
 Processes: !Mapping
   key-element: !String
