@@ -3,6 +3,11 @@
 
 #include <sys/types.h>
 
+#define PROCESS_EXISTS(proc) ( \
+    (proc)->_entry.status == PROC_STARTING \
+    || (proc)->_entry.status == PROC_ALIVE \
+    || (proc)->_entry.status == PROC_STOPPING)
+
 typedef enum {
     PROC_NEW,
     PROC_STARTING,
@@ -12,9 +17,15 @@ typedef enum {
     PROC_ERROR
 } status_t;
 
+typedef enum {
+    PENDING_UP,
+    PENDING_DOWN,
+    PENDING_RESTART
+} pending_status_t;
+
 typedef struct process_entry_s {
     status_t status;
-    int pending_restart;
+    pending_status_t pending;
     pid_t pid;
 } process_entry_t;
 

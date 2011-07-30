@@ -175,7 +175,9 @@ int fork_and_run(config_process_t *process) {
     if(res > 0) {
         process->_entry.status = PROC_STARTING;
         process->_entry.pid = res;
-        process->_entry.pending_restart = FALSE;
+        if(process->_entry.pending == PENDING_RESTART) {
+            process->_entry.pending = PENDING_UP;
+        }
         live_processes += 1;
         return res; // We are parent, just return pid
     }

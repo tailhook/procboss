@@ -127,6 +127,10 @@ bossrun:
     description: >
       Restart if one of the processes dies.
     command-line: [-R, --restart]
+  fifo: !File
+    default: ".bossctl"
+    description: >
+      Filename of the fifo to read control messages from
   stop-signals:
     sigint: !Bool
       default: yes

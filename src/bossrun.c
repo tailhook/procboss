@@ -13,12 +13,13 @@
 
 #include "config.h"
 #include "runcommand.h"
-#include "linenoise.h"
+#include "control.h"
+#include "procman.h"
+#include "bossruncmd.h"
 
 config_main_t config;
 int signal_fd;
 int stopping = FALSE;
-int nostdin = FALSE;
 
 void init_signals() {
     sigset_t mask;
@@ -40,35 +41,20 @@ void init_signals() {
     }
 }
 
-void send_all(int sig) {
-    CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-        status_t s = item->value._entry.status;
-        if(s == PROC_STARTING || s == PROC_ALIVE
-            || s == PROC_STOPPING) {
-            kill(item->value._entry.pid, sig);
-        }
-    }
+void stop_supervisor() {
+    stopping = TRUE;
+    send_all(SIGTERM);
+    return;
 }
 
 void decide_dead(config_process_t *process) {
     if(stopping) return;
-    if(config.bossrun.failfast && !process->_entry.pending_restart) {
-        stopping = TRUE;
-        send_all(SIGTERM);
-        return;
+    if(config.bossrun.failfast && process->_entry.pending != PENDING_RESTART
+                               && process->_entry.pending != PENDING_DOWN) {
+        stop_supervisor();
     }
-    if(config.bossrun.restart || process->_entry.pending_restart) {
-        fork_and_run(process);
-    }
-}
-
-void restart_process(config_process_t *process) {
-    status_t s = process->_entry.status;
-    if(s == PROC_STARTING || s == PROC_ALIVE) {
-        process->_entry.pending_restart = TRUE;
-        process->_entry.status = PROC_STOPPING;
-        kill(process->_entry.pid, SIGTERM);
-    } else if(s != PROC_STOPPING) {
+    if((config.bossrun.restart && process->_entry.pending == PENDING_UP)
+        || process->_entry.pending == PENDING_RESTART) {
         fork_and_run(process);
     }
 }
@@ -148,45 +134,25 @@ void reap_signal() {
     }
 }
 
-void read_stdin() {
-    char data[1024];
-    int res = read(0, data, sizeof(data));
-    if(res == 0) return;
-    if(res < 0) {
-        if(res < 0) {
-            if(errno == EINTR || errno == EAGAIN)
-                return;
-            perror("Can't read from stdin");
-            abort();
-        }
-    }
-    if(res > strlen("restart ")
-        && !strncmp(data, "restart ", strlen("restart "))) {
-        char *procname = data + strlen("restart ");
-        int proclen = res - strlen("restart ");
-        while(isspace(procname[--proclen]));
-        CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-            if(!strncmp(item->key, procname, proclen)) {
-                restart_process(&item->value);
-            }
-        }
-    }
-}
-
 int main(int argc, char **argv) {
     config_load(&config, argc, argv);
     init_signals();
+    if(config.bossrun.fifo_len) {
+        init_control(config.bossrun.fifo);
+    }
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         fork_and_run(&item->value);
     }
     while(live_processes > 0) {
         struct pollfd socks[2] = {
             { fd: signal_fd,
+              revents: 0,
               events: POLLIN },
-            { fd: 0,
+            { fd: control_fd,
+              revents: 0,
               events: POLLIN },
             };
-        int res = poll(socks, nostdin ? 1 : 2, -1);
+        int res = poll(socks, control_fd >= 0 ? 2 : 1, -1);
         if(res < 0) {
             if(errno == EINTR || errno == EAGAIN) {
                 continue;
@@ -199,7 +165,7 @@ int main(int argc, char **argv) {
                 reap_signal();
             }
             if(socks[1].revents & POLLIN) {
-                read_stdin();
+                read_control(bossrun_cmd_table);
             }
         }
     }
