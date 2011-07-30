@@ -29,18 +29,29 @@ def build(bld):
             'src/config.yaml',
             'src/runcommand.c',
             'src/bossrun.c',
+            'src/bossruncmd.c',
             'src/entry.c',
             'src/control.c',
             'src/procman.c',
-            'src/bossruncmd.c',
             ],
         target       = 'bossrun',
         includes     = ['src'],
-        defines      = [
-            'LOG_STRIP_PATH="../src/"',
-            ],
-        cflags      = ['-std=c99', '-Wall'],
+        cflags       = ['-std=c99', '-Wall'],
         lib          = ['yaml', 'coyaml'],
+        )
+    bld(
+        features     = ['c', 'cprogram', 'coyaml'],
+        source       = [
+            'linenoise/linenoise.c',
+            'src/bossruncmd.c',
+            'src/config.c',
+            'src/bossrc.c',
+            ],
+        target       = 'bossrc',
+        includes     = ['src', 'linenoise'],
+        cflags       = ['-std=c99', '-Wall'],
+        lib          = ['yaml', 'coyaml'],
+        defines      = [ 'NOACTIONS' ],
         )
 
 
