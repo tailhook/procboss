@@ -122,12 +122,14 @@ bossrun:
     description: >
       Fail (and stop all processes) if one of the processes dies. Overrides
       restart option.
-    command-line: [-F, --failfast]
+    command-line-enable: [-F, --failfast]
+    command-line-disable: [-f, --no-fail]
   restart: !Bool
     default: no
     description: >
       Restart if one of the processes dies.
-    command-line: [-R, --restart]
+    command-line-enable: [-R, --restart]
+    command-line-disable: [-r, --no-restart]
   fifo: !File
     default: ".bossctl"
     description: >
