@@ -52,10 +52,12 @@ void decide_dead(config_process_t *process) {
     if(config.bossrun.failfast && process->_entry.pending != PENDING_RESTART
                                && process->_entry.pending != PENDING_DOWN) {
         stop_supervisor();
+        return;
     }
     if((config.bossrun.restart && process->_entry.pending == PENDING_UP)
         || process->_entry.pending == PENDING_RESTART) {
         fork_and_run(process);
+        return;
     }
 }
 
