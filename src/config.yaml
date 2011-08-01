@@ -124,6 +124,14 @@ bossrun:
       restart option.
     command-line-enable: [-F, --failfast]
     command-line-disable: [-f, --no-fail]
+  failfast-message: !String
+    default: >
+      Stoping because "%s" (pid %d) is dead on signal %d or with code %d
+    description: >
+      Message to print when stopping supervisor. Can contain following
+      substitutions: %1$s -- process name, %2$d -- pid of the process,
+      %3$d -- signal by which process is stopped, %4$d -- return value
+      (if not stopped by signal).
   restart: !Bool
     default: no
     description: >

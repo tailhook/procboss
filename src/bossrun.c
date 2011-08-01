@@ -47,10 +47,14 @@ void stop_supervisor() {
     return;
 }
 
-void decide_dead(config_process_t *process) {
+void decide_dead(char *name, config_process_t *process, int status) {
     if(stopping) return;
     if(config.bossrun.failfast && process->_entry.pending != PENDING_RESTART
                                && process->_entry.pending != PENDING_DOWN) {
+        printf(config.bossrun.failfast_message,
+            name, process->_entry.pid,
+            WIFSIGNALED(status) ? WTERMSIG(status) : -1,
+            WIFEXITED(status) ? WEXITSTATUS(status) : -1);
         stop_supervisor();
         return;
     }
@@ -80,7 +84,7 @@ void reap_children() {
                 item->value._entry.status = PROC_DEAD;
                 live_processes -= 1;
 
-                decide_dead(&item->value);
+                decide_dead(item->key, &item->value, status);
 
                 break;
             }
