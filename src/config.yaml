@@ -3,6 +3,7 @@ __meta__:
 
   program-name: boss
   default-config: /etc/bossd.yaml
+  environ-filename: BOSSRUN_CONFIG
   description: |
     Process supervisor and control utilities
   has-arguments: yes
@@ -140,6 +141,7 @@ bossrun:
     command-line-disable: [-r, --no-restart]
   fifo: !File
     default: ".bossctl"
+    environ-var: BOSSRUN_CONTROL
     description: >
       Filename of the fifo to read control messages from
   stop-signals:
