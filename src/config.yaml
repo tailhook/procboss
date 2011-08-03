@@ -116,6 +116,7 @@ __types__:
         then dropping privileges. This is a mapping from descriptor number to
         a file definition structure.
     _entry: !CType process_entry_t
+    _name: !String
 
 bossrun:
   failfast: !Bool

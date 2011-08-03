@@ -10,6 +10,9 @@ bossrun:
 Processes:
   producer:
     executable-path: /usr/bin/python
+    environ: &env1
+      VAR1: value_one
+      VAR2: value_two
     arguments:
       - python-producer  # fake name for easier grepping ps
       - -c
@@ -34,6 +37,9 @@ Processes:
 
   consumer:
     executable-path: /usr/bin/python
+    environ:
+      <<: *env1
+      VAR3: value_three
     arguments:
       - python-consumer  # fake name for easier grepping ps
       - -c

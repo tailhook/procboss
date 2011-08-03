@@ -19,6 +19,9 @@
 
 #include "runcommand.h"
 
+extern char *configuration_name;
+extern int configuration_name_len;
+
 static inline int CHECK(int res, char *msg) {
     if(res < 0) {
         perror(msg);
@@ -167,6 +170,8 @@ static void drop_privileges(config_process_t *process) {
 }
 
 int fork_and_run(config_process_t *process) {
+    int i;
+    int parentpid = getpid();
     int res = fork();
     if(res < 0) {
         process->_entry.status = PROC_ERROR;
@@ -197,21 +202,27 @@ int fork_and_run(config_process_t *process) {
     }
 
     char *argv[process->arguments_len+1];
-    char *environ[process->environ_len+1];
-    int i = 0;
+    i = 0;
     CONFIG_STRING_LOOP(item, process->arguments) {
         argv[i++] = item->value;
     }
     argv[i] = NULL;
-    i = 0;
+
+    char *environ[process->environ_len+2];
+    char **tmpenv = environ;
+    char bossenv[process->_name_len + configuration_name_len + 64];
+    sprintf(bossenv, "BOSS_CHILD=%s,%d,%s,%d",
+        configuration_name, parentpid, process->_name, getpid());
+    *tmpenv++ = bossenv;
+
     CONFIG_STRING_STRING_LOOP(item, process->environ) {
         char *data = alloca(item->key_len + item->value_len + 2);
         strcpy(data, item->key);
         strcat(data, "=");
         strcat(data, item->value);
-        environ[i++] = data;
+        *tmpenv++ = data;
     }
-    environ[i] = NULL;
+    *tmpenv = NULL;
 
     CHECK(execve(process->executable_path, argv, environ),
         "Can't execute");

@@ -20,6 +20,8 @@
 config_main_t config;
 int signal_fd;
 int stopping = FALSE;
+char *configuration_name = "bossrun";
+int configuration_name_len = 7; // strlen("bossrun");
 
 void init_signals() {
     sigset_t mask;
@@ -147,6 +149,8 @@ int main(int argc, char **argv) {
         init_control(config.bossrun.fifo);
     }
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+        item->value._name = item->key;
+        item->value._name_len = item->key_len;
         fork_and_run(&item->value);
     }
     while(live_processes > 0) {
