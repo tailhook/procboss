@@ -25,5 +25,6 @@ extern int control_fd;
 
 void init_control(char *filename);
 void read_control(command_def_t *cmdtable);
+void close_control(char *filename);
 
 #endif // _H_CONTROL

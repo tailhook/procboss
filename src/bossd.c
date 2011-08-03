@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <poll.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 #include "config.h"
 #include "runcommand.h"
@@ -111,11 +112,26 @@ void reap_signal() {
     }
 }
 
+void write_pid(char *pidfile) {
+    int fd = open(pidfile, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+    if(!fd) {
+        perror("Can't write pid file");
+        abort();
+    }
+    char buf[16];
+    int nbytes = sprintf(buf, "%d", getpid());
+    write(fd, buf, nbytes);
+    close(fd);
+}
+
 int main(int argc, char **argv) {
     config_load(&config, argc, argv);
     init_signals();
     if(config.bossd.fifo_len) {
         init_control(config.bossd.fifo);
+    }
+    if(config.bossd.pid_file_len) {
+        write_pid(config.bossd.pid_file);
     }
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         fork_and_run(&item->value);
@@ -145,6 +161,12 @@ int main(int argc, char **argv) {
                 read_control(bossd_cmd_table);
             }
         }
+    }
+    if(config.bossd.pid_file_len) {
+        unlink(config.bossd.pid_file);
+    }
+    if(config.bossd.fifo_len) {
+        close_control(config.bossd.fifo);
     }
     config_free(&config);
     return 0;

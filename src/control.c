@@ -28,7 +28,6 @@ void init_control(char *fifo) {
         abort();
     }
 
-
     control_fd = open(fifo, O_RDONLY|O_NONBLOCK);
     if(control_fd < 0) {
         perror("Can't open fifo");
@@ -52,6 +51,12 @@ void init_control(char *fifo) {
         perror("Can't set cloexec flag");
         abort();
     }
+}
+
+void close_control(char *fifo) {
+    close(control_fd);
+    close(ctl_write_fd);
+    unlink(fifo);
 }
 
 static int match(char *data, int argc, char *argv[], int pattern) {

@@ -164,9 +164,13 @@ bossrun:
 
 bossd:
   fifo: !File
-    default: "/var/run/bossctl"
+    default: "/var/run/boss/fifo"
     description: >
       Filename of the fifo to read control messages from
+  pid-file: !File
+    default: "/var/run/boss/bossd.pid"
+    description: >
+      Filename of the pid file of bossd daemon
   timeouts:
     successful-run: !Float
       min: 0.1
