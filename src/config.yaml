@@ -3,7 +3,7 @@ __meta__:
 
   program-name: boss
   default-config: /etc/bossd.yaml
-  environ-filename: BOSSRUN_CONFIG
+  environ-filename: BOSS_CONFIG
   description: |
     Process supervisor and control utilities
   has-arguments: yes
@@ -161,6 +161,36 @@ bossrun:
       default: no
       description: >
         Stop all processes when SIGHUP received
+
+bossd:
+  fifo: !File
+    default: "/var/run/bossctl"
+    description: >
+      Filename of the fifo to read control messages from
+  timeouts:
+    successful-run: !Float
+      min: 0.1
+      default: 10
+      description: >
+        Program running at least this number of seconds is considered
+        successful. Which means it will be restarted immediately.
+    small-restart: !Float
+      min: 0.001
+      default: 0.1
+      description: >
+        Timeout to restart program after first few unsuccessful runs
+    retries: !Float
+      min: 1
+      default: 2
+      description: >
+        Number of times to try to restart dead process within the small restart
+        timeout
+    big-restart: !Float
+      min: 0.1
+      default: 120
+      description: >
+        Program which didn't start specified number of retries, will be tried
+        later after specified number of seconds
 
 Processes: !Mapping
   key-element: !String

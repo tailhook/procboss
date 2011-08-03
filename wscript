@@ -42,6 +42,22 @@ def build(bld):
     bld(
         features     = ['c', 'cprogram', 'coyaml'],
         source       = [
+            'src/config.yaml',
+            'src/runcommand.c',
+            'src/bossd.c',
+            'src/bossdcmd.c',
+            'src/entry.c',
+            'src/control.c',
+            'src/procman.c',
+            ],
+        target       = 'bossd',
+        includes     = ['src'],
+        cflags       = ['-std=c99', '-Wall'],
+        lib          = ['yaml', 'coyaml'],
+        )
+    bld(
+        features     = ['c', 'cprogram', 'coyaml'],
+        source       = [
             'linenoise/linenoise.c',
             'src/bossruncmd.c',
             'src/config.c',

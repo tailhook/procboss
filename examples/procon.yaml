@@ -29,6 +29,8 @@ Processes:
               time.sleep(0.001)
           except socket.error:
             continue
+    user: nobody
+    group: nobody
 
   consumer:
     executable-path: /usr/bin/python
@@ -56,6 +58,8 @@ Processes:
             if tot > oldtot + 4096:
               print("Bytes read", tot)
               oldtot = tot
+    user: nobody
+    group: nobody
 
 
 

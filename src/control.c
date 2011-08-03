@@ -29,7 +29,7 @@ void init_control(char *fifo) {
     }
 
 
-    control_fd = open(config.bossrun.fifo, O_RDONLY|O_NONBLOCK);
+    control_fd = open(fifo, O_RDONLY|O_NONBLOCK);
     if(control_fd < 0) {
         perror("Can't open fifo");
         abort();
@@ -42,7 +42,7 @@ void init_control(char *fifo) {
 
     // Second file descriptor is opened to leave pipe usable even after
     // actual writer closed pipe (would need to reopen pipe otherwise)
-    ctl_write_fd = open(config.bossrun.fifo, O_WRONLY|O_NONBLOCK);
+    ctl_write_fd = open(fifo, O_WRONLY|O_NONBLOCK);
     if(ctl_write_fd < 0) {
         perror("Failed to open write end of fifo");
         abort();
