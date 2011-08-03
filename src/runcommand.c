@@ -146,7 +146,7 @@ static void drop_privileges(config_process_t *process) {
         int gid = strtol(process->group, &end, 0);
         if(end != process->group + process->group_len) {
             struct group *gr = getgrnam(process->group);
-            CHECK(gr ? -1 : 0, "Can't find group");
+            CHECK(gr ? 0 : -1, "Can't find group");
             gid = gr->gr_gid;
         }
         CHECK(setgid(gid), "Can't set gid");
@@ -156,12 +156,12 @@ static void drop_privileges(config_process_t *process) {
         int uid = strtol(process->user, &end, 0);
         if(end != process->user + process->user_len) {
             struct passwd *pw = getpwnam(process->user);
-            CHECK(pw ? -1 : 0, "Can't find user");
+            CHECK(pw ? 0 : -1, "Can't find user");
             uid = pw->pw_uid;
         }
         CHECK(setuid(uid), "Can't set uid");
     }
-    if(process->chroot) {
+    if(process->chroot_len) {
         CHECK(chroot(process->chroot), "Can't chroot");
     }
 }
