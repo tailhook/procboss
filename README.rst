@@ -17,7 +17,7 @@ To Do:
 
 * Running multiple similar processes (like in fastcgi), optionally keeping
   some shared file descriptor open
-* Configuration reloading
+* Configuration reloading (partially works, by restarting in-place)
 * Better report of processes status
 * Good logging of process shutdowns
 
@@ -28,11 +28,3 @@ Will never happen:
 * Networking
 * Other bloat
 
-Current Status
---------------
-
-Currently implemented only small utility `bossrun` (and a companion `bossrc`
-which is a wrapper for dealing with control interface). It's almost fully
-featured supervisor, which intended to test setup and to run same set of
-processes on developers machine. `bossrun` by design lacks daemonizing ability
-and reloading configuration on the fly.
