@@ -69,6 +69,20 @@ def build(bld):
         lib          = ['yaml', 'coyaml'],
         defines      = [ 'NOACTIONS' ],
         )
+    bld(
+        features     = ['c', 'cprogram', 'coyaml'],
+        source       = [
+            'linenoise/linenoise.c',
+            'src/bossdcmd.c',
+            'src/config.c',
+            'src/bossctl.c',
+            ],
+        target       = 'bossctl',
+        includes     = ['src', 'linenoise'],
+        cflags       = ['-std=c99', '-Wall'],
+        lib          = ['yaml', 'coyaml'],
+        defines      = [ 'NOACTIONS' ],
+        )
 
 
 def dist(ctx):

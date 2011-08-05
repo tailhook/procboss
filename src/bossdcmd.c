@@ -9,6 +9,7 @@
 
 #define ACTION(a) (a)
 extern void stop_supervisor();
+extern void restart_supervisor();
 
 #endif
 
@@ -22,6 +23,8 @@ command_def_t bossd_cmd_table[] = {
     description: "Start specified processes if not already running"},
    {name: "shutdown", type: CMD_NOARG, fun: {noarg: ACTION(stop_supervisor)},
     description: "Stop all processes and quit supervisor"},
+   {name: "explode", type: CMD_NOARG, fun: {noarg: ACTION(restart_supervisor)},
+    description: "Restart supervisor in place and check processes"},
    {name: NULL}
 };
 

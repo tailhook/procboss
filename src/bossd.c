@@ -30,8 +30,16 @@ char *configuration_name;
 int configuration_name_len;
 char **recover_args;
 
-void recover_signal(int realsig) {
+void restart_supervisor() {
+    // TODO(tailhook) log manual restart
     execvp(recover_args[0], recover_args);
+    abort(); // Can never reach here
+}
+
+void recover_signal(int realsig) {
+    // TODO(tailhook) log message
+    execvp(recover_args[0], recover_args);
+    abort(); // Can never reach here
 }
 
 void init_signals() {
@@ -74,7 +82,6 @@ void init_signals() {
         abort();
     }
 }
-
 
 void stop_supervisor() {
     stopping = TRUE;
@@ -144,7 +151,7 @@ void reap_signal() {
             send_all(info.ssi_signo);
             break;
         case SIGHUP:
-            // Just nothing, maybe reload config in future
+            // TODO(tailhook) reload config
             break;
         }
     }
