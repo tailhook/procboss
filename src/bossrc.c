@@ -11,6 +11,7 @@
 #include "linenoise.h"
 #include "config.h"
 #include "bossruncmd.h"
+#include "shellutil.h"
 
 config_main_t config;
 
@@ -20,7 +21,7 @@ void completion(const char *buf, linenoiseCompletions *lc) {
 void run_shell(int fifofd) {
     char *line;
 
-    linenoiseSetCompletionCallback(completion);
+    init_completion(bossrun_cmd_table);
     linenoiseHistoryLoad(".bossrc.history");
 
     while((line = linenoise("bossrun> ")) != NULL) {

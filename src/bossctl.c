@@ -11,11 +11,9 @@
 #include "linenoise.h"
 #include "config.h"
 #include "bossdcmd.h"
+#include "shellutil.h"
 
 config_main_t config;
-
-void completion(const char *buf, linenoiseCompletions *lc) {
-}
 
 void run_shell(int fifofd) {
     char *line;
@@ -28,7 +26,7 @@ void run_shell(int fifofd) {
         linenoiseHistoryLoad(filename);
     }
 
-    linenoiseSetCompletionCallback(completion);
+    init_completion(bossd_cmd_table);
 
     while((line = linenoise("bossd> ")) != NULL) {
         if (line[0] != '\0') {
