@@ -85,6 +85,16 @@ def build(bld):
         lib          = ['yaml', 'coyaml'],
         defines      = [ 'NOACTIONS' ],
         )
+    bld.install_as('${PREFIX}/share/zsh/site-functions/_bossrc',
+        'completion/zsh_bossrc')
+    bld.install_as('${PREFIX}/share/zsh/site-functions/_bossctl',
+        'completion/zsh_bossctl')
+    if bld.env['PREFIX'] == '/usr':
+        bld.install_as('/etc/bash_completion.d/boss',
+            'completion/bash')
+    else:
+        bld.install_as('${PREFIX}/etc/bash_completion.d/procboss',
+            'completion/bash')
 
 
 def dist(ctx):

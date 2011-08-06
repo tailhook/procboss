@@ -54,6 +54,11 @@ void run_shell(int fifofd) {
 
 int main(int argc, char *argv[]) {
     config_load(&config, argc, argv);
+
+    if(check_command(argv + optind, argc - optind, bossd_cmd_table)) {
+        return 0;
+    }
+
     if(!config.bossd.fifo_len) {
         fprintf(stderr, "No fifo");
         return 1;

@@ -15,9 +15,6 @@
 
 config_main_t config;
 
-void completion(const char *buf, linenoiseCompletions *lc) {
-}
-
 void run_shell(int fifofd) {
     char *line;
 
@@ -51,6 +48,10 @@ int main(int argc, char *argv[]) {
     if(!config.bossrun.fifo_len) {
         fprintf(stderr, "No fifo");
         return 1;
+    }
+
+    if(check_command(argv + optind, argc - optind, bossrun_cmd_table)) {
+        return 0;
     }
 
     int fd = open(config.bossrun.fifo, O_WRONLY);

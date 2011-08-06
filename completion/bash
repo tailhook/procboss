@@ -1,0 +1,19 @@
+#!/bin/bash
+
+_bossrc()
+{
+    local -a tail
+    tail=("${COMP_WORDS[@]}")
+    unset "tail[0]"
+    COMPREPLY=($(bossrc compword "${tail[@]}"))
+}
+complete -F _bossrc bossrc
+
+_bossctl()
+{
+    local -a tail
+    tail=("${COMP_WORDS[@]}")
+    unset "tail[0]"
+    COMPREPLY=($(bossctl compword "${tail[@]}"))
+}
+complete -F _bossctl bossctl

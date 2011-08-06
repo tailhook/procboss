@@ -1,0 +1,10 @@
+#compdef bossrc
+
+_bossrc() {
+    local -a mywords
+    mywords=("${words[@]}")
+    mywords[1]=()
+    compadd $(bossrc compword "${mywords[@]}" 2>/dev/null)
+}
+
+_bossrc "$@"

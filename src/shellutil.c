@@ -1,3 +1,5 @@
+#include <ctype.h>
+
 #include "shellutil.h"
 #include "linenoise.h"
 #include "config.h"
@@ -50,4 +52,88 @@ static void completion(const char *buf, linenoiseCompletions *lc) {
 void init_completion(command_def_t *tbl) {
     current_completion_table = tbl;
     linenoiseSetCompletionCallback(completion);
+}
+
+int check_command(char **argv, int argc, command_def_t *completion_commands) {
+    if(!argc) return 0;
+    if(!strcmp(argv[0], "compword")) {
+        if(argc == 1) {  // completing all commands
+            for(command_def_t *val = completion_commands;
+                val->name; ++val) {
+                printf("%s\n", val->name);
+            }
+        } else if(argc == 2) {
+            int len = strlen(argv[1]);
+            for(command_def_t *val = completion_commands;
+                val->name; ++val) {
+                if(!len || !strncmp(argv[1], val->name, len)) {
+                    printf("%s\n", val->name);
+                }
+            }
+        } else {  // completing process
+            for(command_def_t *val = completion_commands;
+                val->name; ++val) {
+                if(!strcmp(argv[1], val->name)) {
+                    if(val->type == CMD_NOARG) return 1;
+                    break;
+                }
+            }
+            int len = strlen(argv[argc-1]);
+            CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+                if(!len || !strncmp(argv[argc-1], item->key, len)) {
+                    printf("%s\n", item->key);
+                }
+            }
+        }
+        return 1;
+    }
+    if(!strcmp(argv[0], "compdescr")) {
+        if(argc == 1) {  // completing all commands
+            for(command_def_t *val = completion_commands;
+                val->name; ++val) {
+                printf("%s %s\n", val->name, val->description);
+            }
+        } else if(argc == 2) {
+            int len = strlen(argv[1]);
+            for(command_def_t *val = completion_commands;
+                val->name; ++val) {
+                if(!len || !strncmp(argv[1], val->name, len)) {
+                    printf("%s %s\n", val->name, val->description);
+                }
+            }
+        } else {  // completing process
+            for(command_def_t *val = completion_commands;
+                val->name; ++val) {
+                if(!strcmp(argv[1], val->name)) {
+                    if(val->type == CMD_NOARG) return 1;
+                    break;
+                }
+            }
+            int len = strlen(argv[argc-1]);
+            CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+                if(!len || !strncmp(argv[argc-1], item->key, len)) {
+                    printf("%s", item->key);
+                    int chars = 0;
+                    CONFIG_STRING_LOOP(arg, item->value.arguments) {
+                        char *end = arg->value;
+                        while(isprint(*end)) ++end;
+                        if(end - arg->value + chars >= 70) {
+                            printf(" %.*s...", 70 - chars, arg->value);
+                            break;
+                        } else if(*end) {
+                            printf(" %.*s...",
+                                (int)(end - arg->value), arg->value);
+                            break;
+                        } else {
+                            printf(" %s", arg->value);
+                            chars += arg->value_len;
+                        }
+                    }
+                    printf("\n");
+                }
+            }
+        }
+        return 1;
+    }
+    return 0;
 }
