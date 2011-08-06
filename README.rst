@@ -12,6 +12,7 @@ Features:
 * Fast restart in case of crash (reaping SIGCHLD)
 * Control interface throught fifo to stop/restart processes
 * User-friendly and featureful configuration in yaml
+* Bash and Zsh completion for remote control utilities
 
 To Do:
 

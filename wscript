@@ -6,7 +6,7 @@ from waflib.Scripting import Dist
 import subprocess
 import os.path
 
-APPNAME='boss2'
+APPNAME='procboss'
 if os.path.exists('.git'):
     VERSION=subprocess.getoutput('git describe').lstrip('v').replace('-', '_')
 else:
@@ -90,7 +90,7 @@ def build(bld):
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossctl',
         'completion/zsh_bossctl')
     if bld.env['PREFIX'] == '/usr':
-        bld.install_as('/etc/bash_completion.d/boss',
+        bld.install_as('/etc/bash_completion.d/procboss',
             'completion/bash')
     else:
         bld.install_as('${PREFIX}/etc/bash_completion.d/procboss',
