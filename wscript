@@ -85,6 +85,16 @@ def build(bld):
         lib          = ['yaml', 'coyaml'],
         defines      = [ 'NOACTIONS' ],
         )
+    bld(
+        features     = ['c', 'cprogram'],
+        source       = [
+            'src/bosstree.c',
+            ],
+        target       = 'bosstree',
+        includes     = ['src'],
+        cflags       = ['-std=c99', '-Wall'],
+        lib          = [],
+        )
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossrc',
         'completion/zsh_bossrc')
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossctl',
