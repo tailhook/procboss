@@ -18,8 +18,6 @@
 
 #define TRUE 1
 #define FALSE 0
-#define COLOR(a) if(options->color) { printf("\033[%dm", (a)); }
-#define COMMA if(started) { putchar(','); } else { started = TRUE; }
 
 typedef struct bosstree_opt_s {
     int pid;
@@ -301,28 +299,74 @@ int find_processes(process_info_t **res) {
     return cur;
 }
 
+void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
+    int started = FALSE;
+    int tm = time(NULL);
+#define COLOR(a) if(!color && options->color) { printf("\033[%dm", (a)); }
+#define COMMA if(started) { putchar(','); } else { started = TRUE; }
+    if(color) {
+        printf("\033[%dm", color);
+    }
+    if(options->show_name) {
+        COMMA;
+        printf("%s", child->name);
+    }
+    if(options->show_pid) {
+        COMMA;
+        printf("%d", child->pid);
+    }
+    if(options->show_uptime) {
+        COLOR(FORE_BLUE);
+        COMMA;
+        printf("up %ld seconds", tm - child->starttime);
+        COLOR(FORE_RESET);
+    }
+    if(options->show_threads) {
+        COLOR(FORE_BLUE);
+        COMMA;
+        printf("%ld threads", child->threads);
+        COLOR(FORE_RESET);
+    }
+    if(options->show_rss) {
+        COLOR(FORE_BLUE)
+        COMMA;
+        if(child->rss > 10000000000) {
+            printf("%ldGiB", child->rss >> 30);
+        } else if(child->rss > 1000000000) {
+            printf("%3.1fGiB", (double)child->rss/(1 << 30));
+        } else if(child->rss > 10000000) {
+            printf("%ldMiB", child->rss >> 20);
+        } else {
+            printf("%3.1fMiB", (double)child->rss/(1 << 20));
+        }
+        COLOR(FORE_RESET);
+    }
+    if(options->show_cmd) {
+        COMMA;
+        for(int i = 0; i < child->cmd_len; ++i) {
+            if(isprint(child->cmd[i])) {
+                putchar(child->cmd[i]);
+            } else if(!child->cmd[i]) {
+                putchar(' ');
+            } else {
+                printf("...");
+                break;
+            }
+        }
+    }
+    if(color) {
+        printf("\033[%dm", FORE_RESET);
+    }
+#undef COLOR
+#undef COMMA
+}
+
 void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
     char prefix[128];
     int prefixlen = 0;
-    int started;
-    int tm = time(NULL);
     for(int i = 0; i < num; ++i) {
         if(tbl[i].kind == BOSS) {
-            started = FALSE;
-            COLOR(FORE_GREEN);
-            if(options->show_name) {
-                COMMA;
-                printf("%s", tbl[i].cmd);
-            }
-            if(options->show_pid) {
-                COMMA;
-                printf("%d", tbl[i].pid);
-            }
-            if(options->show_pid) {
-                COMMA;
-                printf("up %ld seconds", tm - tbl[i].starttime);
-            }
-            COLOR(FORE_RESET);
+            print_proc(&tbl[i], options, FORE_GREEN);
             printf("\n");
             strcpy(prefix, "  │");
             prefixlen = strlen(prefix);
@@ -333,54 +377,7 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
                 } else {
                     printf("%.*s└─", prefixlen-3, prefix);
                 }
-                started = FALSE;
-                if(options->show_name) {
-                    COMMA;
-                    printf("%s", child->name);
-                }
-                if(options->show_pid) {
-                    COMMA;
-                    printf("%d", child->pid);
-                }
-                if(options->show_uptime) {
-                    COLOR(FORE_BLUE);
-                    COMMA;
-                    printf("up %ld seconds", tm - child->starttime);
-                    COLOR(FORE_RESET);
-                }
-                if(options->show_threads) {
-                    COLOR(FORE_BLUE);
-                    COMMA;
-                    printf("%ld threads", child->threads);
-                    COLOR(FORE_RESET);
-                }
-                if(options->show_rss) {
-                    COLOR(FORE_BLUE)
-                    COMMA;
-                    if(child->rss > 10000000000) {
-                        printf("%ldGiB", child->rss >> 30);
-                    } else if(child->rss > 1000000000) {
-                        printf("%3.1fGiB", (double)child->rss/(1 << 30));
-                    } else if(child->rss > 10000000) {
-                        printf("%ldMiB", child->rss >> 20);
-                    } else {
-                        printf("%3.1fMiB", (double)child->rss/(1 << 20));
-                    }
-                    COLOR(FORE_RESET);
-                }
-                if(options->show_cmd) {
-                    COMMA;
-                    for(int i = 0; i < child->cmd_len; ++i) {
-                        if(isprint(child->cmd[i])) {
-                            putchar(child->cmd[i]);
-                        } else if(!child->cmd[i]) {
-                            putchar(' ');
-                        } else {
-                            printf("...");
-                            break;
-                        }
-                    }
-                }
+                print_proc(child, options, 0);
                 printf("\n");
             }
         }
@@ -388,18 +385,8 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
     if(options->detached) {
         for(int i = 0; i < num; ++i) {
             if(tbl[i].kind == DETACHED) {
-                started = FALSE;
                 process_info_t *child = &tbl[i];
-                COLOR(FORE_RED);
-                if(options->show_name) {
-                    COMMA;
-                    printf("%s", child->name);
-                }
-                if(options->show_pid) {
-                    COMMA;
-                    printf("%d", child->pid);
-                }
-                COLOR(FORE_RESET);
+                print_proc(child, options, FORE_RED);
                 printf("\n");
             }
         }
@@ -416,6 +403,9 @@ void sort_processes(process_info_t *tbl, int num) {
                     &tbl[i], chentry);
                 if(tbl[i].bosspid == tbl[j].pid) {
                     tbl[j].kind = BOSS;
+                    if(!tbl[j].name) {
+                        tbl[j].name = tbl[j].cmd;
+                    }
                     if(tbl[i].pid == tbl[i].mypid) {
                         tbl[i].kind = BOSS_CHILD;
                     } else {
