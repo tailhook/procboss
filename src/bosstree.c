@@ -324,7 +324,18 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     if(options->show_uptime) {
         COLOR(FORE_BLUE);
         COMMA;
-        printf("up %ld seconds", tm - child->starttime);
+        int uptime = tm - child->starttime;
+        if(uptime > 86400) {
+            printf("up %dd%dh%dm%ds", uptime / 86400,
+                uptime/3600 % 24, uptime/60 % 60 , uptime % 60);
+        } else if(uptime > 3600) {
+            printf("up %dh%dm%ds", uptime/3600, uptime/60 % 60 , uptime % 60);
+        } else if(uptime > 60) {
+            printf("up %dm%ds", uptime / 60 , uptime % 60);
+        } else {
+            printf("up %ds", uptime);
+        }
+
         COLOR(FORE_RESET);
     }
     if(options->show_threads) {
