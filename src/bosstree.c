@@ -9,12 +9,17 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/queue.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <ctype.h>
+#include <time.h>
 
 #define TRUE 1
 #define FALSE 0
+#define COLOR(a) if(options->color) { printf("\033[%dm", (a)); }
+#define COMMA if(started) { putchar(','); } else { started = TRUE; }
 
 typedef struct bosstree_opt_s {
     int pid;
@@ -32,6 +37,7 @@ typedef struct bosstree_opt_s {
     int show_rss;
     int show_cpu;
 
+    int color;
     int monitor;
 } bosstree_opt_t;
 
@@ -58,19 +64,48 @@ typedef struct process_info_s {
     int pgid;
     int psid;
     int tty;
-    int tpsid;
+    int tpgid;
     char *cmd;
-    long long uptime;
+    int cmd_len;
+    long starttime;
     long threads;
     long vsize;
     long rss;
     long cpu;
+
+    struct process_info_s *parent;
+    struct process_info_s *boss;
+    TAILQ_HEAD(children_s, process_info_s) children;
+    TAILQ_ENTRY(child_entry_s) chentry;
 } process_info_t;
+
+enum color_enum {
+    BRIGHT = 1,
+    DIM = 2,
+    FORE_BLACK = 30,
+    FORE_RED = 31,
+    FORE_GREEN = 32,
+    FORE_YELLOW = 33,
+    FORE_BLUE = 34,
+    FORE_MAGENTA = 35,
+    FORE_CYAN = 36,
+    FORE_WHITE = 37,
+    FORE_RESET = 39,
+    BG_BLACK = 40,
+    BG_RED = 41,
+    BG_GREEN = 42,
+    BG_YELLOW = 43,
+    BG_BLUE = 44,
+    BG_MAGENTA = 45,
+    BG_CYAN = 46,
+    BG_WHITE = 47,
+    BG_RESET = 49,
+};
 
 void print_usage(FILE *file) {
     fprintf(file,
         "Usage:\n"
-        "   bosstree [ -acdmpurtT ] [-A | -C config.yaml | -P pid]\n"
+        "   bosstree [ -acdmpurtoUN ] [-A | -C config.yaml | -P pid]\n"
         "\n"
         "Tree selection options:\n"
         "   -A       Show all processes started from any bossd\n"
@@ -89,6 +124,8 @@ void print_usage(FILE *file) {
         "   -N       Don't show name of the process\n"
         "   -r       Show RSS(Resident Set Size) of each process\n"
         "   -u       Show CPU usage of each process (in monitor mode)\n"
+        "   -o       Colorize output\n"
+        "   -O       Dont' colorize output\n"
         "   -m       Monitor (continuously display all the processes)\n"
         "\n"
         );
@@ -96,7 +133,7 @@ void print_usage(FILE *file) {
 
 int parse_options(int argc, char **argv, bosstree_opt_t *options) {
     int opt;
-    while((opt = getopt(argc, argv, "AC:P:dcahptmNruU")) != -1) {
+    while((opt = getopt(argc, argv, "AC:P:dcahpoOmNrtuU")) != -1) {
         switch(opt) {
         case 'A': options->all = TRUE;
             break;
@@ -114,6 +151,8 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
         case 'r': options->show_rss = TRUE; break;
         case 'u': options->show_cpu = TRUE; break;
         case 'm': options->monitor = TRUE; break;
+        case 'o': options->color = TRUE; break;
+        case 'O': options->color = FALSE; break;
         case 'h':
             print_usage(stdout);
             exit(0);
@@ -144,10 +183,14 @@ int parse_entry(int pid, char *data, int dlen, process_info_t *info) {
 }
 
 int parse_stat(int pid, process_info_t *info) {
+    struct stat stinfo;
     char filename[64];
     sprintf(filename, "/proc/%d/stat", pid);
+    if(stat(filename, &stinfo) < 0) return FALSE;
+    info->starttime = stinfo.st_ctime;
+
     int fd = open(filename, O_RDONLY);
-    if(!fd) return FALSE;
+    if(fd < 0) return FALSE;
     char buf[4096];
     int apid;
     int len = read(fd, buf, 4095);
@@ -155,13 +198,15 @@ int parse_stat(int pid, process_info_t *info) {
     buf[len] = 0;
     long utime, stime, cutime, cstime;
     sscanf(buf,
-        "%d %*s %*c %d %d %d %d %d %*u %*u %*u %*u %*u"
-        " %lu %lu %lu %lu %*d %ld %*d %llu %lu %ld",
+        "%d (%*[^)]) %*c %d %d %d"
+        " %d %d %*u %*u %*u %*u %*u"
+        " %lu %lu %ld %ld"
+        " %*d %*d %ld %*d %*d %lu %ld",
         &apid, &info->ppid, &info->pgid, &info->psid,
-        &info->tty, &info->tpsid,
+        &info->tty, &info->tpgid,
         &utime, &stime, &cutime, &cstime,
-        &info->threads, &info->uptime,
-        &info->vsize, &info->rss);
+        &info->threads, &info->vsize, &info->rss);
+    info->rss *= sysconf(_SC_PAGESIZE);
     assert(apid == pid);
     close(fd);
     return TRUE;
@@ -171,13 +216,14 @@ int parse_arguments(int pid, process_info_t *info) {
     char filename[64];
     sprintf(filename, "/proc/%d/cmdline", pid);
     int fd = open(filename, O_RDONLY);
-    if(!fd) return FALSE;
+    if(fd < 0) return FALSE;
     char buf[4096];
     int len = read(fd, buf, 4096);
     assert(len >= 0);
     info->cmd = malloc(len);
     memcpy(info->cmd, buf, len);
     info->cmd[len-1] = 0;
+    info->cmd_len = len;
     assert(info->cmd);
     close(fd);
     return TRUE;
@@ -241,6 +287,7 @@ int find_processes(process_info_t **res) {
         int pid = strtol(entry->d_name, NULL, 10);
         if(!pid) continue;
         processes[cur].pid = pid;
+        TAILQ_INIT(&processes[cur].children);
         if(!parse_stat(pid, &processes[cur]))
             continue;
         if(!parse_arguments(pid, &processes[cur]))
@@ -255,21 +302,105 @@ int find_processes(process_info_t **res) {
 }
 
 void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
+    char prefix[128];
+    int prefixlen = 0;
+    int started;
+    int tm = time(NULL);
     for(int i = 0; i < num; ++i) {
         if(tbl[i].kind == BOSS) {
-            int bosspid = tbl[i].pid;
-            printf("%d %s\n", tbl[i].pid, tbl[i].cmd);
-            for(int j = 0; j < num; ++j) {
-                if(tbl[j].bosspid == bosspid && tbl[j].kind == BOSS_CHILD) {
-                    printf("    %d %s\n", tbl[j].pid, tbl[j].name);
+            started = FALSE;
+            COLOR(FORE_GREEN);
+            if(options->show_name) {
+                COMMA;
+                printf("%s", tbl[i].cmd);
+            }
+            if(options->show_pid) {
+                COMMA;
+                printf("%d", tbl[i].pid);
+            }
+            if(options->show_pid) {
+                COMMA;
+                printf("up %ld seconds", tm - tbl[i].starttime);
+            }
+            COLOR(FORE_RESET);
+            printf("\n");
+            strcpy(prefix, "  │");
+            prefixlen = strlen(prefix);
+            for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
+                child; child=TAILQ_NEXT(child, chentry)) {
+                if(TAILQ_NEXT(child, chentry)) {
+                    printf("%.*s├─", prefixlen-3, prefix);
+                } else {
+                    printf("%.*s└─", prefixlen-3, prefix);
                 }
+                started = FALSE;
+                if(options->show_name) {
+                    COMMA;
+                    printf("%s", child->name);
+                }
+                if(options->show_pid) {
+                    COMMA;
+                    printf("%d", child->pid);
+                }
+                if(options->show_uptime) {
+                    COLOR(FORE_BLUE);
+                    COMMA;
+                    printf("up %ld seconds", tm - child->starttime);
+                    COLOR(FORE_RESET);
+                }
+                if(options->show_threads) {
+                    COLOR(FORE_BLUE);
+                    COMMA;
+                    printf("%ld threads", child->threads);
+                    COLOR(FORE_RESET);
+                }
+                if(options->show_rss) {
+                    COLOR(FORE_BLUE)
+                    COMMA;
+                    if(child->rss > 10000000000) {
+                        printf("%ldGiB", child->rss >> 30);
+                    } else if(child->rss > 1000000000) {
+                        printf("%3.1fGiB", (double)child->rss/(1 << 30));
+                    } else if(child->rss > 10000000) {
+                        printf("%ldMiB", child->rss >> 20);
+                    } else {
+                        printf("%3.1fMiB", (double)child->rss/(1 << 20));
+                    }
+                    COLOR(FORE_RESET);
+                }
+                if(options->show_cmd) {
+                    COMMA;
+                    for(int i = 0; i < child->cmd_len; ++i) {
+                        if(isprint(child->cmd[i])) {
+                            putchar(child->cmd[i]);
+                        } else if(!child->cmd[i]) {
+                            putchar(' ');
+                        } else {
+                            printf("...");
+                            break;
+                        }
+                    }
+                }
+                printf("\n");
             }
         }
     }
     if(options->detached) {
         for(int i = 0; i < num; ++i) {
             if(tbl[i].kind == DETACHED) {
-                printf("%d %s\n", tbl[i].pid, tbl[i].name);
+                started = FALSE;
+                process_info_t *child = &tbl[i];
+                COLOR(FORE_RED);
+                if(options->show_name) {
+                    COMMA;
+                    printf("%s", child->name);
+                }
+                if(options->show_pid) {
+                    COMMA;
+                    printf("%d", child->pid);
+                }
+                COLOR(FORE_RESET);
+                printf("\n");
             }
         }
     }
@@ -277,27 +408,26 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
 
 void sort_processes(process_info_t *tbl, int num) {
     for(int i = 0; i < num; ++i) {
-        if(tbl[i].bosspid) {
-            int bosspid = tbl[i].bosspid;
-            int ok = FALSE;
-            for(int j = 0; j < num; ++j) {
-                if(tbl[j].pid == bosspid) {
-                    ok = TRUE;
-                    if(tbl[j].kind == BOSS) break;  // Already visited
+        int found = FALSE;
+        for(int j = 0; j < num; ++j) {
+            if(tbl[i].ppid == tbl[j].pid) {
+                tbl[i].parent = &tbl[j];
+                TAILQ_INSERT_TAIL(&tbl[j].children,
+                    &tbl[i], chentry);
+                if(tbl[i].bosspid == tbl[j].pid) {
                     tbl[j].kind = BOSS;
-                    for(int k = 0; k < num; ++k) {
-                        if(tbl[k].bosspid == bosspid) {
-                            if(tbl[k].pid == tbl[k].mypid) {
-                                tbl[k].kind = BOSS_CHILD;
-                            } else {
-                                tbl[k].kind = BOSS_ANCESTOR;
-                            }
-                        }
+                    if(tbl[i].pid == tbl[i].mypid) {
+                        tbl[i].kind = BOSS_CHILD;
+                    } else {
+                        tbl[i].kind = BOSS_ANCESTOR;
                     }
-                    break;
+                    found = TRUE;
                 }
+                break;
             }
-            if(!ok) {
+        }
+        if(!found) {
+            if(tbl[i].bosspid) {
                 if(tbl[i].pid == tbl[i].mypid) {
                     tbl[i].kind = DETACHED;
                 } else {
@@ -318,10 +448,11 @@ int main(int argc, char **argv) {
         show_cmd: FALSE,
         show_pid: FALSE,
         show_threads: FALSE,
-        show_uptime: FALSE,
-        show_name: FALSE,
+        show_uptime: TRUE,
+        show_name: TRUE,
         show_rss: FALSE,
         show_cpu: FALSE,
+        color: isatty(1),
         monitor: FALSE
         };
     parse_options(argc, argv, &options);
