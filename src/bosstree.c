@@ -36,7 +36,7 @@ typedef struct bosstree_opt_s {
     int show_cpu;
 
     int color;
-    int monitor;
+    double monitor;
 } bosstree_opt_t;
 
 typedef enum process_kind_enum {
@@ -124,14 +124,15 @@ void print_usage(FILE *file) {
         "   -u       Show CPU usage of each process (in monitor mode)\n"
         "   -o       Colorize output\n"
         "   -O       Dont' colorize output\n"
-        "   -m       Monitor (continuously display all the processes)\n"
+        "   -m IVL   Monitor (continuously display all the processes with\n"
+        "            interval IVL in seconds\n"
         "\n"
         );
 }
 
 int parse_options(int argc, char **argv, bosstree_opt_t *options) {
     int opt;
-    while((opt = getopt(argc, argv, "AC:P:dcahpoOmNrtuU")) != -1) {
+    while((opt = getopt(argc, argv, "AC:P:dcahpoOm:NrtuU")) != -1) {
         switch(opt) {
         case 'A': options->all = TRUE;
             break;
@@ -148,7 +149,7 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
         case 'N': options->show_name = FALSE; break;
         case 'r': options->show_rss = TRUE; break;
         case 'u': options->show_cpu = TRUE; break;
-        case 'm': options->monitor = TRUE; break;
+        case 'm': options->monitor = strtod(optarg, NULL); break;
         case 'o': options->color = TRUE; break;
         case 'O': options->color = FALSE; break;
         case 'h':
@@ -218,11 +219,13 @@ int parse_arguments(int pid, process_info_t *info) {
     char buf[4096];
     int len = read(fd, buf, 4096);
     assert(len >= 0);
-    info->cmd = malloc(len);
-    memcpy(info->cmd, buf, len);
-    info->cmd[len-1] = 0;
-    info->cmd_len = len;
-    assert(info->cmd);
+    if(len) {
+        info->cmd = malloc(len);
+        assert(info->cmd);
+        memcpy(info->cmd, buf, len);
+        info->cmd[len-1] = 0;
+        info->cmd_len = len;
+    }
     close(fd);
     return TRUE;
 }
@@ -231,7 +234,7 @@ int parse_environ(int pid, process_info_t *info) {
     char filename[64];
     sprintf(filename, "/proc/%d/environ", pid);
     int fd = open(filename, O_RDONLY);
-    if(!fd) return FALSE;
+    if(fd < 0) return FALSE;
     char buf[4096] = { 0 };
     int bufof = 1;
     while(1) {
@@ -268,7 +271,7 @@ int parse_environ(int pid, process_info_t *info) {
 }
 
 int find_processes(process_info_t **res) {
-    int size = 64;
+    int size = 2;
     int cur = 0;
     process_info_t *processes = malloc(sizeof(process_info_t)*size);
     assert(processes);
@@ -278,20 +281,23 @@ int find_processes(process_info_t **res) {
     struct dirent *entry;
     while((entry = readdir(dir))) {
         if(cur >= size) {
-            processes = realloc(processes, sizeof(process_info_t)*size*2);
-            memset(processes + size, 0, size * sizeof(process_info_t));
             size *= 2;
+            processes = realloc(processes, sizeof(process_info_t)*size);
         }
+        memset(processes+cur, 0, sizeof(process_info_t));
         int pid = strtol(entry->d_name, NULL, 10);
         if(!pid) continue;
         processes[cur].pid = pid;
-        TAILQ_INIT(&processes[cur].children);
         if(!parse_stat(pid, &processes[cur]))
             continue;
         if(!parse_arguments(pid, &processes[cur]))
             continue;
-        if(!parse_environ(pid, &processes[cur]))
+        if(!parse_environ(pid, &processes[cur])) {
+            if(processes[cur].cmd) {
+                free(processes[cur].cmd);
+            }
             continue;
+        }
         ++cur;
     }
     closedir(dir);
@@ -304,7 +310,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     int tm = time(NULL);
 #define COLOR(a) if(!color && options->color) { printf("\033[%dm", (a)); }
 #define COMMA if(started) { putchar(','); } else { started = TRUE; }
-    if(color) {
+    if(color && options->color) {
         printf("\033[%dm", color);
     }
     if(options->show_name) {
@@ -354,7 +360,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
             }
         }
     }
-    if(color) {
+    if(color && options->color) {
         printf("\033[%dm", FORE_RESET);
     }
 #undef COLOR
@@ -395,6 +401,9 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
 
 void sort_processes(process_info_t *tbl, int num) {
     for(int i = 0; i < num; ++i) {
+        TAILQ_INIT(&tbl[i].children);
+    }
+    for(int i = 0; i < num; ++i) {
         int found = FALSE;
         for(int j = 0; j < num; ++j) {
             if(tbl[i].ppid == tbl[j].pid) {
@@ -428,6 +437,15 @@ void sort_processes(process_info_t *tbl, int num) {
     }
 }
 
+void free_processes(process_info_t *tbl, int num) {
+    for(int i = 0; i < num; ++i) {
+        if(tbl[i].cmd) free(tbl[i].cmd);
+        if(tbl[i].bossconfig) free(tbl[i].bossconfig);
+        if(tbl[i].name != tbl[i].cmd) free(tbl[i].name);
+    }
+    free(tbl);
+}
+
 int main(int argc, char **argv) {
     bosstree_opt_t options = {
         all: TRUE,
@@ -443,13 +461,38 @@ int main(int argc, char **argv) {
         show_rss: FALSE,
         show_cpu: FALSE,
         color: isatty(1),
-        monitor: FALSE
+        monitor: 0.0
         };
     parse_options(argc, argv, &options);
     process_info_t *tbl;
-    int num = find_processes(&tbl);
-    sort_processes(tbl, num);
-    print_processes(tbl, num, &options);
+    int num;
+    if(options.monitor) {
+        struct timespec tm = {
+            tv_sec: (int)options.monitor,
+            tv_nsec: (int)(1000000000*options.monitor) % 1000000000
+            };
+        if(options.color) {
+            printf("\033[1J");
+        }
+        while(1) {
+            if(options.color) {
+                printf("\033[H");
+            } else {
+                printf("----------\n");
+            }
+
+            num = find_processes(&tbl);
+            sort_processes(tbl, num);
+            print_processes(tbl, num, &options);
+            free_processes(tbl, num);
+            nanosleep(&tm, NULL);
+        }
+    } else {
+        num = find_processes(&tbl);
+        sort_processes(tbl, num);
+        print_processes(tbl, num, &options);
+        free_processes(tbl, num);
+    }
 
     return 0;
 }
