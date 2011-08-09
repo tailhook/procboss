@@ -2,6 +2,7 @@
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/signalfd.h>
 #include <stdio.h>
@@ -230,10 +231,20 @@ void parse_entry(int pid, char *data, int dlen) {
             return;
         }
     }
+
+    char filename[64];
+    struct stat info;
+    sprintf(filename, "/proc/%d/stat", pid);
+    if(stat(filename, &info)) {
+        // TODO(tailhook) warn: can't stat process, probably already exited
+        return;
+    }
+
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(!strcmp(item->key, pname)) {
             // TODO(tailhook) log successfully recovered process
             item->value._entry.pid = pid;
+            item->value._entry.start_time = TIME2DOUBLE(info.st_ctim);
             item->value._entry.status = PROC_ALIVE;
             live_processes += 1;
             return;

@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -178,8 +179,11 @@ int fork_and_run(config_process_t *process) {
         return -1;  // Error occured
     }
     if(res > 0) {
+        struct timeval tm;
+        gettimeofday(&tm, NULL);
         process->_entry.status = PROC_STARTING;
         process->_entry.pid = res;
+        process->_entry.start_time = TVAL2DOUBLE(tm);
         if(process->_entry.pending == PENDING_RESTART) {
             process->_entry.pending = PENDING_UP;
         }
