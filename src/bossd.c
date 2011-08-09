@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/time.h>
 #include <sys/signalfd.h>
 #include <stdio.h>
 #include <limits.h>
@@ -92,14 +93,20 @@ void stop_supervisor() {
 
 void decide_dead(char *name, config_process_t *process, int status) {
     if(stopping) return;
-    if(process->_entry.pending == PENDING_UP
-        || process->_entry.pending == PENDING_RESTART) {
+    double delta = process->_entry.dead_time - process->_entry.start_time;
+    if(delta >= config.bossd.timeouts.successful_run) {
+        printf("SUCCESS\n");
+        process->_entry.bad_attempts = 0;
         fork_and_run(process);
         return;
     }
+    process->_entry.bad_attempts += 1;
+    // Will pick up on next loop
 }
 
 void reap_children() {
+    struct timeval tm;
+    gettimeofday(&tm, NULL);
     while(1) {
         int status;
         pid_t pid = waitpid(-1, &status, WNOHANG);
@@ -115,7 +122,12 @@ void reap_children() {
             status_t s = item->value._entry.status;
             if((s == PROC_STARTING || s == PROC_ALIVE
                 || s == PROC_STOPPING) && item->value._entry.pid == pid) {
-                item->value._entry.status = PROC_DEAD;
+                if(item->value._entry.pending != PENDING_DOWN) {
+                    item->value._entry.status = PROC_DEAD;
+                } else {
+                    item->value._entry.status = PROC_STOPPED;
+                }
+                item->value._entry.dead_time = TVAL2DOUBLE(tm);
                 live_processes -= 1;
 
                 decide_dead(item->key, &item->value, status);
@@ -318,6 +330,7 @@ int main(int argc, char **argv) {
             fork_and_run(&item->value);
         }
     }
+    struct timeval tm;
     while(live_processes > 0) {
         struct pollfd socks[2] = {
             { fd: signal_fd,
@@ -327,7 +340,33 @@ int main(int argc, char **argv) {
               revents: 0,
               events: POLLIN },
             };
-        int res = poll(socks, control_fd >= 0 ? 2 : 1, -1);
+        gettimeofday(&tm, NULL);
+        double time = TVAL2DOUBLE(tm);
+        double next_time = 0;
+        if(!stopping) {
+            CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+                if(item->value._entry.status != PROC_DEAD) continue;
+                double start_time = item->value._entry.dead_time;
+                if(item->value._entry.bad_attempts
+                    > config.bossd.timeouts.retries) {
+                    start_time += config.bossd.timeouts.big_restart;
+                    printf("BIG RESTART %s\n", item->key);
+                } else {
+                    start_time += config.bossd.timeouts.small_restart;
+                    printf("SMALL RESTART %s\n", item->key);
+                }
+                if(start_time < time + 0.001) {
+                    fork_and_run(&item->value);
+                } else {
+                    if(!next_time || start_time < next_time) {
+                        next_time = start_time;
+                    }
+                }
+            }
+        }
+        int sleep_ms = (int)((next_time - time)*1000);
+        printf("SLEEPING %d\n", sleep_ms);
+        int res = poll(socks, 2, next_time ? sleep_ms : -1);
         if(res < 0) {
             if(errno == EINTR || errno == EAGAIN) {
                 continue;

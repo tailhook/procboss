@@ -17,6 +17,7 @@ typedef enum {
     PROC_ALIVE,
     PROC_STOPPING,
     PROC_DEAD,
+    PROC_STOPPED,
     PROC_ERROR
 } status_t;
 
@@ -31,8 +32,9 @@ typedef struct process_entry_s {
     pending_status_t pending;
     pid_t pid;
     // Only for bossd:
-    int bad_attempt;
+    int bad_attempts;
     double start_time;
+    double dead_time;
 } process_entry_t;
 
 extern int live_processes;
