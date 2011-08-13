@@ -189,6 +189,7 @@ int fork_and_run(config_process_t *process) {
             process->_entry.pending = PENDING_UP;
         }
         live_processes += 1;
+        LSTARTUP("Started \"%s\" with pid %d", process->_name, res);
         return res; // We are parent, just return pid
     }
     sigset_t mask;

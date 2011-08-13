@@ -94,8 +94,7 @@ void decide_dead(char *name, config_process_t *process, int status) {
     double delta = process->_entry.dead_time - process->_entry.start_time;
     if(delta >= config.bossd.timeouts.successful_run) {
         process->_entry.bad_attempts = 0;
-        int npid = fork_and_run(process);
-        LSTARTUP("Started \"%s\" with pid %d", name, npid);
+        fork_and_run(process);
         return;
     }
     process->_entry.bad_attempts += 1;
@@ -349,8 +348,7 @@ void main_loop() {
                     start_time += config.bossd.timeouts.small_restart;
                 }
                 if(start_time < time + 0.001) {
-                    int npid = fork_and_run(&item->value);
-                    LSTARTUP("Started \"%s\" with pid %d", item->key, npid);
+                    fork_and_run(&item->value);
                 } else {
                     if(!next_time || start_time < next_time) {
                         next_time = start_time;
@@ -392,8 +390,7 @@ int main(int argc, char **argv) {
     recover_processes();
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(item->value._entry.status == PROC_NEW) {
-            int npid = fork_and_run(&item->value);
-            LSTARTUP("Started \"%s\" with pid %d", item->key, npid);
+            fork_and_run(&item->value);
         }
     }
     LRECOVER("Started with %d processes", live_processes);
