@@ -16,6 +16,7 @@
 #include "control.h"
 #include "procman.h"
 #include "bossruncmd.h"
+#include "log.h"
 
 config_main_t config;
 int signal_fd;
@@ -53,7 +54,7 @@ void decide_dead(char *name, config_process_t *process, int status) {
     if(stopping) return;
     if(config.bossrun.failfast && process->_entry.pending != PENDING_RESTART
                                && process->_entry.pending != PENDING_DOWN) {
-        printf(config.bossrun.failfast_message,
+        LWARNING(config.bossrun.failfast_message,
             name, process->_entry.pid,
             WIFSIGNALED(status) ? WTERMSIG(status) : -1,
             WIFEXITED(status) ? WEXITSTATUS(status) : -1);

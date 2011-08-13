@@ -31,6 +31,7 @@ def build(bld):
             'src/bossrun.c',
             'src/bossruncmd.c',
             'src/entry.c',
+            'src/log.c',
             'src/control.c',
             'src/procman.c',
             ],
@@ -44,6 +45,7 @@ def build(bld):
         source       = [
             'src/config.yaml',
             'src/runcommand.c',
+            'src/log.c',
             'src/bossd.c',
             'src/bossdcmd.c',
             'src/entry.c',

@@ -24,6 +24,7 @@
 #include "control.h"
 #include "procman.h"
 #include "bossdcmd.h"
+#include "log.h"
 
 config_main_t config;
 int signal_fd;
@@ -33,13 +34,13 @@ int configuration_name_len;
 char **recover_args;
 
 void restart_supervisor() {
-    // TODO(tailhook) log manual restart
+    LWARNING("Restarting supervisor by manual command");
     execvp(recover_args[0], recover_args);
     abort(); // Can never reach here
 }
 
 void recover_signal(int realsig) {
-    // TODO(tailhook) log message
+    LCRASH("Restarting on signal %d", realsig);
     execvp(recover_args[0], recover_args);
     abort(); // Can never reach here
 }
@@ -47,15 +48,11 @@ void recover_signal(int realsig) {
 void init_signals() {
     stack_t sigstk;
     if ((sigstk.ss_sp = malloc(SIGSTKSZ)) == NULL) {
-        perror("Can't allocate memory for alternate stack");
-        abort();
+        STDASSERT2(-1, "Can't allocate memory for alternate stack");
     }
     sigstk.ss_size = SIGSTKSZ;
     sigstk.ss_flags = 0;
-    if (sigaltstack(&sigstk,(stack_t *)0) < 0) {
-        perror("Can't set alternate stack");
-        abort();
-    }
+    STDASSERT2(sigaltstack(&sigstk,(stack_t *)0), "Can't set alternate stack");
     struct sigaction recover_action;
     recover_action.sa_handler = recover_signal;
     recover_action.sa_flags = SA_ONSTACK;
@@ -79,10 +76,7 @@ void init_signals() {
     sigaddset(&mask, SIGCHLD);
     sigprocmask(SIG_BLOCK, &mask, NULL);
     signal_fd = signalfd(-1, &mask, SFD_NONBLOCK|SFD_CLOEXEC);
-    if(signal_fd < 0) {
-        perror("Can't create signalfd");
-        abort();
-    }
+    STDASSERT2(signal_fd, "Can't create signalfd");
 }
 
 void stop_supervisor() {
@@ -92,12 +86,16 @@ void stop_supervisor() {
 }
 
 void decide_dead(char *name, config_process_t *process, int status) {
+    LDEAD("Process \"%s\" with pid %d dead on signal %d or with status %d",
+        name, process->_entry.pid,
+        WIFSIGNALED(status) ? WTERMSIG(status) : -1,
+        WIFEXITED(status) ? WEXITSTATUS(status) : -1);
     if(stopping) return;
     double delta = process->_entry.dead_time - process->_entry.start_time;
     if(delta >= config.bossd.timeouts.successful_run) {
-        printf("SUCCESS\n");
         process->_entry.bad_attempts = 0;
-        fork_and_run(process);
+        int npid = fork_and_run(process);
+        LSTARTUP("Started \"%s\" with pid %d", name, npid);
         return;
     }
     process->_entry.bad_attempts += 1;
@@ -113,8 +111,7 @@ void reap_children() {
         if(pid == 0) break;
         if(pid == -1) {
             if(errno != EINTR && errno != ECHILD) {
-                perror("Can't wait for child");
-                abort();
+                STDASSERT2(-1, "Can't wait for a child");
             }
             break;
         }
@@ -145,8 +142,7 @@ void reap_signal() {
         if(!bytes) return;
         if(bytes < 0) {
             if(errno == EAGAIN || errno == EINTR) return;
-            perror("Error reading from eventfd");
-            abort();
+            STDASSERT2(-1, "Error reading from signalfd");
         }
         switch(info.ssi_signo) {
         case SIGCHLD:
@@ -157,7 +153,8 @@ void reap_signal() {
             break;
         case SIGINT:
             stopping = TRUE;
-            send_all(info.ssi_signo);
+            // Not sending sigint as it's probably already sent by terminal
+            // send_all(info.ssi_signo);
             break;
         case SIGTERM:
             stopping = TRUE;
@@ -172,10 +169,7 @@ void reap_signal() {
 
 void write_pid(char *pidfile) {
     int fd = open(pidfile, O_WRONLY|O_CREAT|O_TRUNC, 0644);
-    if(!fd) {
-        perror("Can't write pid file");
-        abort();
-    }
+    STDASSERT2(fd, "Can't write pid file");
     char buf[16];
     int nbytes = sprintf(buf, "%d", getpid());
     write(fd, buf, nbytes);
@@ -212,7 +206,7 @@ void parse_entry(int pid, char *data, int dlen) {
     int childpid;
     if(sscanf(data, "%[^,],%d,%[^,],%d",
         cfgpath, &bosspid, pname, &childpid) != 4) {
-        // TODO(tailhook) report unparsable child entry
+        LRECOVER("Unparsable child entry for pid %d", pid);
         return;
     }
     if(childpid != pid) {
@@ -223,23 +217,25 @@ void parse_entry(int pid, char *data, int dlen) {
         if(bosspid != getpid()) {
             // That's ok
         } else {
-            // TODO(tailhook) report warning that config changed
+            LRECOVER("Configuration path has changed for pid %d boss %d",
+                pid, bosspid);
         }
     } else if(bosspid != getpid()) {
-        // TODO(tailhook) warn: probably another daemon running
+        LRECOVER("Probably another daemon with same config is running"
+            " with pid %d (reported by child %d)", bosspid, pid);
         return;
     }
     int status;
     int res = waitpid(childpid, &status, WNOHANG);
     if(res != 0) {
         if(errno == ECHILD) {
-            // TODO(tailhook) warn: apropriately marked process is not a child
+            LRECOVER("Not a child marked as child %d, skipping", pid);
             return;
         } else if(res == pid) {
-            // TODO(tailhook) log as probably shutdown process
+            LRECOVER("Process %d probably died during boss recover", pid);
             return;
         } else {
-            // TODO(tailhook) log as something unexpected
+            LRECOVER("Error checking %d", pid);
             return;
         }
     }
@@ -248,13 +244,13 @@ void parse_entry(int pid, char *data, int dlen) {
     struct stat info;
     sprintf(filename, "/proc/%d/stat", pid);
     if(stat(filename, &info)) {
-        // TODO(tailhook) warn: can't stat process, probably already exited
+        LRECOVER("Process %d probably died during boss recover", pid);
         return;
     }
 
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(!strcmp(item->key, pname)) {
-            // TODO(tailhook) log successfully recovered process
+            LRECOVER("Process %d recovered as \"%s\"", pid, pname);
             item->value._entry.pid = pid;
             item->value._entry.start_time = TIME2DOUBLE(info.st_ctim);
             item->value._entry.status = PROC_ALIVE;
@@ -262,15 +258,18 @@ void parse_entry(int pid, char *data, int dlen) {
             return;
         }
     }
-    // TODO(tailhook) print warning that there is a process which is no more in
-    //                configuration file
+    LRECOVER("Process %d named \"%s\" is still hanging while not in config",
+        pid, pname);
 }
 
 void recover_processes() {
     DIR *dir = opendir("/proc");
-    if(!dir) return;  // TODO(tailhook) log error
+    if(!dir) {
+        LRECOVER("Can't open procfs");
+        return;
+    }
     struct dirent *entry;
-    while((entry = readdir(dir))) {
+    while((errno = 0, entry = readdir(dir))) {
         int pid = strtol(entry->d_name, NULL, 10);
         if(!pid) continue;
         char filename[64];
@@ -289,7 +288,7 @@ void recover_processes() {
                 char *end = memchr(pos, 0, buf + buflen - pos);
                 if(!end) {
                     if(pos < buf + buflen/2) {
-                        // TODO(tailhook) log bad boss_child record
+                        LRECOVER("Too long boss child record for %d", pid);
                         break;
                     } else {
                         memmove(buf, pos, buf + buflen - pos);
@@ -310,7 +309,9 @@ void recover_processes() {
         }
         close(fd);
     }
-    // TODO(tailhook) check error and log
+    if(errno) {
+        LRECOVER("Error reading procfs: %m");
+    }
     closedir(dir);
 }
 
@@ -318,6 +319,8 @@ int main(int argc, char **argv) {
     recover_args = argv;
     read_config(argc, argv);
     init_signals();
+    openlogs();
+    LRECOVER("Starting");
     if(config.bossd.fifo_len) {
         init_control(config.bossd.fifo);
     }
@@ -327,9 +330,11 @@ int main(int argc, char **argv) {
     recover_processes();
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(item->value._entry.status == PROC_NEW) {
-            fork_and_run(&item->value);
+            int npid = fork_and_run(&item->value);
+            LSTARTUP("Started \"%s\" with pid %d", item->key, npid);
         }
     }
+    LRECOVER("Started with %d processes", live_processes);
     struct timeval tm;
     while(live_processes > 0) {
         struct pollfd socks[2] = {
@@ -350,13 +355,12 @@ int main(int argc, char **argv) {
                 if(item->value._entry.bad_attempts
                     > config.bossd.timeouts.retries) {
                     start_time += config.bossd.timeouts.big_restart;
-                    printf("BIG RESTART %s\n", item->key);
                 } else {
                     start_time += config.bossd.timeouts.small_restart;
-                    printf("SMALL RESTART %s\n", item->key);
                 }
                 if(start_time < time + 0.001) {
-                    fork_and_run(&item->value);
+                    int npid = fork_and_run(&item->value);
+                    LSTARTUP("Started \"%s\" with pid %d", item->key, npid);
                 } else {
                     if(!next_time || start_time < next_time) {
                         next_time = start_time;
@@ -365,14 +369,12 @@ int main(int argc, char **argv) {
             }
         }
         int sleep_ms = (int)((next_time - time)*1000);
-        printf("SLEEPING %d\n", sleep_ms);
         int res = poll(socks, 2, next_time ? sleep_ms : -1);
         if(res < 0) {
             if(errno == EINTR || errno == EAGAIN) {
                 continue;
             }
-            perror("Can't poll");
-            abort();
+            STDASSERT2(-1, "Can't poll");
         }
         if(res) {
             if(socks[0].revents & POLLIN) {

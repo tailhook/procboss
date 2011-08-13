@@ -172,6 +172,31 @@ bossd:
     default: "/var/run/boss/bossd.pid"
     description: >
       Filename of the pid file of bossd daemon
+  logging:
+    file: !File
+      default: "/var/log/boss/bossd.log"
+      description: >
+        Filename of the main log file of bossd
+    mode: !Int
+      default: 0644
+      description: >
+        Mode of the file creation (by default all users can read, unless your
+        umask is more strict)
+    rotation-size: !Int
+      min: 4096
+      default: 1Mi
+      description: >
+        Maximum log file size in bytes (rought length, can be slightly longer)
+    rotation-time: !Int
+      min: 60
+      default: 604800
+      description: >
+        Maximum log file live time in seconds (by default one week)
+    rotation-backups: !Int
+      min: 1
+      default: 10
+      description: >
+        Number of old log files to be kept while rotating
   timeouts:
     successful-run: !Float
       min: 0.1

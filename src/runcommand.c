@@ -19,14 +19,14 @@
 #include <signal.h>
 
 #include "runcommand.h"
+#include "log.h"
 
 extern char *configuration_name;
 extern int configuration_name_len;
 
 static inline int CHECK(int res, char *msg) {
     if(res < 0) {
-        perror(msg);
-        abort();
+        logstd(LOG_STARTUP, msg);
     }
     return res;
 }
