@@ -20,6 +20,8 @@ def options(opt):
 
 def configure(conf):
     conf.load('compiler_c')
+    conf.find_program('rst2man', var='RST2MAN')
+    conf.find_program('gzip', var='GZIP')
 
 def build(bld):
     import coyaml.waf
@@ -97,6 +99,26 @@ def build(bld):
         cflags       = ['-std=c99', '-Wall'],
         lib          = [],
         )
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/bossd.rst', target='doc/bossd.8')
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/bossctl.rst', target='doc/bossctl.8')
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/bossrun.rst', target='doc/bossrun.1')
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/bossrc.rst', target='doc/bossrc.1')
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/bosstree.rst', target='doc/bosstree.1')
+    bld(rule='${GZIP} ${SRC}',
+        source='doc/bossd.8', target='doc/bossd.8.gz')
+    bld(rule='${GZIP} ${SRC}',
+        source='doc/bossctl.8', target='doc/bossctl.8.gz')
+    bld(rule='${GZIP} ${SRC}',
+        source='doc/bossrun.1', target='doc/bossrun.1.gz')
+    bld(rule='${GZIP} ${SRC}',
+        source='doc/bossrc.1', target='doc/bossrc.1.gz')
+    bld(rule='${GZIP} ${SRC}',
+        source='doc/bosstree.1', target='doc/bosstree.1.gz')
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossrc',
         'completion/zsh_bossrc')
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossctl',
@@ -107,6 +129,10 @@ def build(bld):
     else:
         bld.install_as('${PREFIX}/etc/bash_completion.d/procboss',
             'completion/bash')
+    bld.install_files('${PREFIX}/share/man/man8',
+        ['doc/bossd.8.gz', 'doc/bossctl.8.gz'])
+    bld.install_files('${PREFIX}/share/man/man8',
+        ['doc/bossrun.1.gz', 'doc/bossrc.1.gz'])
 
 
 def dist(ctx):
