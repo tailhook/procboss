@@ -1,0 +1,10 @@
+# ntp is run as root because it needs to adjust previleges
+# then it chroots itself to an empty directory and setuid's
+user: root
+executable-path: /usr/bin/ntpd
+arguments:
+- ntpd
+- --panicgate  # allow big adjustments at startup
+- --nofork
+- --user=ntp
+- --jaildir=/var/empty

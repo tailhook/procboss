@@ -1,0 +1,5 @@
+# no hacks, since jabber port is > 1024
+user: jabber
+executable-path: /usr/bin/prosody
+arguments:
+- prosody

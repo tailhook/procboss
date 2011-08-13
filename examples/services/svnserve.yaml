@@ -1,0 +1,10 @@
+tweaks:
+- &svnserve_root /data/svn
+
+user: svn
+executable-path: /usr/bin/svnserve
+arguments:
+- svnserve
+- --root=$svnserve_root
+- --daemon  # serves requests
+- --foreground  # still in foreground to be able to supervise

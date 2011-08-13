@@ -1,0 +1,9 @@
+_tweaks:
+- &mysql_data_dir /var/lib/mysql
+
+user: mysql
+executable-path: /uzr/sbin/mysqld
+arguments:
+- mysqld
+- "--datadir=$mysql_data_dir"
+-

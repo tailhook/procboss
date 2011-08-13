@@ -1,0 +1,9 @@
+# cyrus want master to be executed as root
+user: root
+executable-path: /usr/cyrus/bin/master
+arguments:
+- cyrus-master  # to diferentiate from other, e.g. postfix's master
+- -C  #config follows
+- /etc/cyrus/imapd.conf
+- -M  # another config follows
+- /etc/cyrus/cyrus.conf

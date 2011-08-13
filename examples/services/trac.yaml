@@ -1,0 +1,18 @@
+_tweaks:
+- &trac_parent_dir /data/trac
+- &trac_locale en_US.UTF-8
+user: trac
+executable-path: /usr/bin/python2.7
+arguments:
+- python-trac  # be ps-friendly
+- /usr/share/trac/trac.fcgi
+environ:
+  TRAC_ENV_PARENT_DIR: *trac_parent_dir
+  LANG: *trac_locale
+files:
+  0: !unix  # unix socket for fastcgi
+    path: /var/run/trac-socket
+    user: trac
+    group: http
+    mode: 0660
+-

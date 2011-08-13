@@ -1,0 +1,18 @@
+user: root
+# lighttpd needs to be patched to listen on file decriptor, then
+# yo don't need to start it as root (uncomment file declaration
+# following)
+# user: http
+# group: http
+executable-path: /usr/sbin/lighttpd
+arguments:
+- lighttpd
+- -D  # do not daemonize
+- -f  # configuration file follows
+- /etc/lighttpd.conf
+# uncomment these lines if you have lighttpd patched to accept
+# listening on file descriptors
+# files:
+#   3: !tcp
+#     host: 0.0.0.0
+#     port: 80

@@ -7,6 +7,10 @@ bossrun:
   failfast: yes
   restart: no
 
+bossd:
+  timeouts:
+    successful-run: 10
+
 Processes:
   producer:
     executable-path: /usr/bin/python
@@ -66,6 +70,10 @@ Processes:
               oldtot = tot
     user: nobody
     group: nobody
+
+  zerogw:
+    executable-path: /usr/bin/zerogw21
+    arguments: [zerogw, -c, /home/pc/dev/zerogw/examples/zerogw.yaml]
 
 
 

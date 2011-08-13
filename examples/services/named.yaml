@@ -1,0 +1,9 @@
+# named needs to suid itself, so that it can be runed in chroot
+user: root
+executable-path: /usr/sbin/named
+arguments:
+- named
+- -f  # run in foreground
+- -c/etc/namedb/named.conf # configuration file
+- -t/var/chroot/named # chroot for security
+- -unamed # and user name
