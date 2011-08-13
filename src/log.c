@@ -101,6 +101,30 @@ void openlogs() {
     }
 }
 
+void rotatelogs() {
+    char filename1[config.bossd.logging.file_len + 32];
+    char filename2[config.bossd.logging.file_len + 32];
+    struct stat stinfo;
+    int i;
+    for(i = 1; i < config.bossd.logging.rotation_backups+1; ++i) {
+        sprintf(filename1, "%s.%d", config.bossd.logging.file, i);
+        if(stat(filename1, &stinfo) == -1) {
+            if(errno != ENOENT)
+                STDASSERT2(-1, "Can't stat log backups");
+            break;
+        }
+    }
+    for(; i > 1; --i) {
+        sprintf(filename2, "%s.%d", config.bossd.logging.file, i-1);
+        STDASSERT2(rename(filename2, filename1), "Can't move log backup");
+        strcpy(filename1, filename2);
+    }
+    sprintf(filename1, "%s.%d", config.bossd.logging.file, 1);
+    STDASSERT2(rename(config.bossd.logging.file, filename1),
+        "Can't move log to a backup")
+    reopenlogs();
+}
+
 void reopenlogs() {
     int oldlogfile = logfile;
     logfile = open(config.bossd.logging.file, O_APPEND|O_WRONLY|O_CREAT,
@@ -113,4 +137,8 @@ void reopenlogs() {
         setcloexec(logfile);
         close(oldlogfile);
     }
+}
+
+off_t logsize() {
+    return lseek(logfile, 0, SEEK_CUR);
 }

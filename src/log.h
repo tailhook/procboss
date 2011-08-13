@@ -14,7 +14,7 @@
 #define STDASSERT(value) if(value < 0) { \
     logstd(LOG_CRITICAL, #value); abort(); }
 #define STDASSERT2(value, descr) if(value < 0) { \
-    logstd(LOG_CRITICAL, #descr); abort(); }
+    logstd(LOG_CRITICAL, descr); abort(); }
 
 typedef enum {
     LOG_CRASH,
@@ -30,5 +30,7 @@ void logmsg(int level, char *msg, ...);
 void logstd(int level, char *msg, ...);
 void openlogs();
 void reopenlogs();
+void rotatelogs();
+off_t logsize();
 
 #endif

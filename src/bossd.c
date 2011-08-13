@@ -315,28 +315,12 @@ void recover_processes() {
     closedir(dir);
 }
 
-int main(int argc, char **argv) {
-    recover_args = argv;
-    read_config(argc, argv);
-    init_signals();
-    openlogs();
-    LRECOVER("Starting");
-    if(config.bossd.fifo_len) {
-        init_control(config.bossd.fifo);
-    }
-    if(config.bossd.pid_file_len) {
-        write_pid(config.bossd.pid_file);
-    }
-    recover_processes();
-    CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-        if(item->value._entry.status == PROC_NEW) {
-            int npid = fork_and_run(&item->value);
-            LSTARTUP("Started \"%s\" with pid %d", item->key, npid);
-        }
-    }
-    LRECOVER("Started with %d processes", live_processes);
+void main_loop() {
+    long last_rotation = -1;
+    double rot_time = config.bossd.logging.rotation_time;
+    int rot_size = config.bossd.logging.rotation_size;
     struct timeval tm;
-    while(live_processes > 0) {
+    while(live_processes > 0 || !stopping) {
         struct pollfd socks[2] = {
             { fd: signal_fd,
               revents: 0,
@@ -347,6 +331,12 @@ int main(int argc, char **argv) {
             };
         gettimeofday(&tm, NULL);
         double time = TVAL2DOUBLE(tm);
+        if(last_rotation < 0) {
+            last_rotation = (long)(time / rot_time);
+        } else if(!stopping && (last_rotation != (long)(time / rot_time)
+                                || logsize() > rot_size)) {
+            rotatelogs();
+        }
         double next_time = 0;
         if(!stopping) {
             CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
@@ -385,6 +375,29 @@ int main(int argc, char **argv) {
             }
         }
     }
+}
+
+int main(int argc, char **argv) {
+    recover_args = argv;
+    read_config(argc, argv);
+    init_signals();
+    openlogs();
+    LRECOVER("Starting");
+    if(config.bossd.fifo_len) {
+        init_control(config.bossd.fifo);
+    }
+    if(config.bossd.pid_file_len) {
+        write_pid(config.bossd.pid_file);
+    }
+    recover_processes();
+    CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+        if(item->value._entry.status == PROC_NEW) {
+            int npid = fork_and_run(&item->value);
+            LSTARTUP("Started \"%s\" with pid %d", item->key, npid);
+        }
+    }
+    LRECOVER("Started with %d processes", live_processes);
+    main_loop();
     if(config.bossd.pid_file_len) {
         unlink(config.bossd.pid_file);
     }

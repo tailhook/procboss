@@ -27,6 +27,7 @@ extern int configuration_name_len;
 static inline int CHECK(int res, char *msg) {
     if(res < 0) {
         logstd(LOG_STARTUP, msg);
+        exit(127);
     }
     return res;
 }
