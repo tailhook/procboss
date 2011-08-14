@@ -6,7 +6,7 @@ pkgrel=1
 pkgdesc="A process supervisor"
 arch=('i686' 'x86_64')
 url="http://github.com/tailhook/procboss"
-license=('GPL')
+license=('MIT')
 depends=('coyaml')
 makedepends=('coyaml' 'docutils')
 backup=("etc/bossd.yaml")
@@ -22,6 +22,9 @@ build() {
 package() {
   cd $srcdir/$pkgname-$pkgver
   ./waf install --destdir=$pkgdir
-  install -D $pkgdir/var/log/boss
-  install -D $pkgdir/var/run/boss
+  install -d -m755 $pkgdir/var/log/boss
+  install -d -m755 $pkgdir/var/run/boss
+  install -d -m755 $pkgdir/usr/share/procboss/examples
+  install -m644 ./examples/services/* "$pkgdir/usr/share/$pkgname/examples"
+  install -D -m644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
