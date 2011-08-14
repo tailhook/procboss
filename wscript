@@ -132,7 +132,7 @@ def build(bld):
     bld.install_files('${PREFIX}/share/man/man8',
         ['doc/bossd.8.gz', 'doc/bossctl.8.gz'])
     bld.install_files('${PREFIX}/share/man/man8',
-        ['doc/bossrun.1.gz', 'doc/bossrc.1.gz'])
+        ['doc/bossrun.1.gz', 'doc/bossrc.1.gz', 'doc/bosstree.1.gz'])
 
 
 def dist(ctx):
