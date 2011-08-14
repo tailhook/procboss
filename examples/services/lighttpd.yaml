@@ -13,6 +13,6 @@ arguments:
 # uncomment these lines if you have lighttpd patched to accept
 # listening on file descriptors
 # files:
-#   3: !tcp
+#   3: !Tcp
 #     host: 0.0.0.0
 #     port: 80

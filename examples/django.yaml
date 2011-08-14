@@ -3,7 +3,7 @@ Processes:
   django:
     user: django
     executable-path: /usr/bin/python2.7
-    workdir: /home/www/django
+    work-dir: /home/www/django
     arguments:
     - python-django # easier to understand in ps
     - manage.py
@@ -13,7 +13,7 @@ Processes:
     - minspare=2
     - maxspare=10
     files:
-      0: !unix  # unix socket for fastcgi
+      0: !UnixSocket  # unix socket for fastcgi
         path: /var/run/django-socket
         user: trac
         group: http

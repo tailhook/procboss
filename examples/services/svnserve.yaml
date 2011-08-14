@@ -1,4 +1,4 @@
-tweaks:
+_tweaks:
 - &svnserve_root /data/svn
 
 user: svn

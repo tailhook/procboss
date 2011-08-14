@@ -10,7 +10,7 @@ environ:
   TRAC_ENV_PARENT_DIR: *trac_parent_dir
   LANG: *trac_locale
 files:
-  0: !unix  # unix socket for fastcgi
+  0: !UnixSocket  # unix socket for fastcgi
     path: /var/run/trac-socket
     user: trac
     group: http
