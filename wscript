@@ -139,7 +139,8 @@ def dist(ctx):
     ctx.excl = [
         'doc/_build/**',
         '.waf*', '*.tar.gz', '*.zip', 'build',
-        '.git*', '.lock*', '**/*.pyc', '**/*.swp', '**/*~'
+        '.git*', '.lock*', '**/*.pyc', '**/*.swp', '**/*~',
+        '.boss*',
         ]
     ctx.algo = 'tar.gz'
 
