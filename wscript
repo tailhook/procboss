@@ -53,6 +53,7 @@ def build(bld):
             'src/entry.c',
             'src/control.c',
             'src/procman.c',
+            'src/util.c',
             ],
         target       = 'bossd',
         includes     = ['src'],
@@ -93,6 +94,7 @@ def build(bld):
         features     = ['c', 'cprogram'],
         source       = [
             'src/bosstree.c',
+            'src/util.c',
             ],
         target       = 'bosstree',
         includes     = ['src'],

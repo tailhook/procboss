@@ -25,6 +25,7 @@
 #include "procman.h"
 #include "bossdcmd.h"
 #include "log.h"
+#include "util.h"
 
 config_main_t config;
 int signal_fd;
@@ -32,6 +33,8 @@ int stopping = FALSE;
 char *configuration_name;
 int configuration_name_len;
 char **recover_args;
+long boottime;
+int jiffie;
 
 void restart_supervisor() {
     LWARNING("Restarting supervisor by manual command");
@@ -242,10 +245,25 @@ void parse_entry(int pid, char *data, int dlen) {
     }
 
     char filename[64];
-    struct stat info;
     sprintf(filename, "/proc/%d/stat", pid);
-    if(stat(filename, &info)) {
+    char buf[4096];
+    int fd = open(filename, O_RDONLY);
+    if(fd < 0) {
         LRECOVER("Process %d probably died during boss recover", pid);
+        return;
+    }
+    res = read(fd, buf, sizeof(buf)-1);
+    if(res < 10) {
+        LRECOVER("Process %d probably died during boss recover", pid);
+        return;
+    }
+    close(fd);
+    long long startjif;
+    if(sscanf(buf, "%*d (%*[^)]) %*c %*d %*d %*d"
+        " %*d %*d %*u %*u %*u %*u %*u"
+        " %*u %*u %*d %*d %*d %*d %*d %*d %lld",
+        &startjif) != 1) {
+        LRECOVER("Error parsing stat of %d", pid);
         return;
     }
 
@@ -253,7 +271,7 @@ void parse_entry(int pid, char *data, int dlen) {
         if(!strcmp(item->key, pname)) {
             LRECOVER("Process %d recovered as \"%s\"", pid, pname);
             item->value._entry.pid = pid;
-            item->value._entry.start_time = TIME2DOUBLE(info.st_ctim);
+            item->value._entry.start_time = boottime + startjif*jiffie;
             item->value._entry.status = PROC_ALIVE;
             live_processes += 1;
             return;
@@ -383,6 +401,8 @@ int main(int argc, char **argv) {
     read_config(argc, argv);
     init_signals();
     openlogs();
+    boottime = get_boot_time();
+    jiffie = sysconf(_SC_CLK_TCK);
     LRECOVER("Starting");
     if(config.bossd.fifo_len) {
         init_control(config.bossd.fifo);
