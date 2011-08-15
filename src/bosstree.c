@@ -172,6 +172,7 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
 }
 
 int parse_entry(int pid, char *data, int dlen, process_info_t *info) {
+    assert(dlen > 1);
     char cfgpath[dlen+1];
     char pname[dlen+1];
     int bosspid;
@@ -245,7 +246,7 @@ int parse_environ(int pid, process_info_t *info) {
         char *pos = memmem(buf, buflen,
                            "\0BOSS_CHILD=", strlen("BOSS_CHILD=")+1);
         if(pos) {
-            char *end = memchr(pos, 0, buf + buflen - pos);
+            char *end = memchr(pos+1, 0, buf+buflen-pos-1);
             if(!end) {
                 if(pos < buf + buflen/2) {
                     // TODO(tailhook) log bad boss_child record
@@ -285,9 +286,9 @@ int find_processes(process_info_t **res) {
             size *= 2;
             processes = realloc(processes, sizeof(process_info_t)*size);
         }
-        memset(processes+cur, 0, sizeof(process_info_t));
         int pid = strtol(entry->d_name, NULL, 10);
         if(!pid) continue;
+        memset(processes+cur, 0, sizeof(process_info_t));
         processes[cur].pid = pid;
         if(!parse_stat(pid, &processes[cur]))
             continue;

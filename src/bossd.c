@@ -304,7 +304,7 @@ void recover_processes() {
             char *pos = memmem(buf, buflen,
                                "\0BOSS_CHILD=", strlen("BOSS_CHILD=")+1);
             if(pos) {
-                char *end = memchr(pos, 0, buf + buflen - pos);
+                char *end = memchr(pos+1, 0, buf+buflen-pos-1);
                 if(!end) {
                     if(pos < buf + buflen/2) {
                         LRECOVER("Too long boss child record for %d", pid);
