@@ -93,7 +93,8 @@ void decide_dead(char *name, config_process_t *process, int status) {
     if(stopping) return;
     if(process->_entry.pending == PENDING_DOWN) return;
     double delta = process->_entry.dead_time - process->_entry.start_time;
-    if(delta >= config.bossd.timeouts.successful_run) {
+    if(process->_entry.pending == PENDING_RESTART
+        || delta >= config.bossd.timeouts.successful_run) {
         process->_entry.bad_attempts = 0;
         fork_and_run(process);
         return;
