@@ -37,6 +37,10 @@ typedef struct bosstree_opt_s {
 
     int color;
     double monitor;
+
+    long boottime;
+    int jiffie;
+    int pagesize;
 } bosstree_opt_t;
 
 typedef enum process_kind_enum {
@@ -65,7 +69,7 @@ typedef struct process_info_s {
     int tpgid;
     char *cmd;
     int cmd_len;
-    long starttime;
+    long long starttime;
     long threads;
     long vsize;
     long rss;
@@ -182,12 +186,8 @@ int parse_entry(int pid, char *data, int dlen, process_info_t *info) {
 }
 
 int parse_stat(int pid, process_info_t *info) {
-    struct stat stinfo;
     char filename[64];
     sprintf(filename, "/proc/%d/stat", pid);
-    if(stat(filename, &stinfo) < 0) return FALSE;
-    info->starttime = stinfo.st_ctime;
-
     int fd = open(filename, O_RDONLY);
     if(fd < 0) return FALSE;
     char buf[4096];
@@ -200,12 +200,11 @@ int parse_stat(int pid, process_info_t *info) {
         "%d (%*[^)]) %*c %d %d %d"
         " %d %d %*u %*u %*u %*u %*u"
         " %lu %lu %ld %ld"
-        " %*d %*d %ld %*d %*d %lu %ld",
+        " %*d %*d %ld %*d %lld %lu %ld",
         &apid, &info->ppid, &info->pgid, &info->psid,
         &info->tty, &info->tpgid,
         &utime, &stime, &cutime, &cstime,
-        &info->threads, &info->vsize, &info->rss);
-    info->rss *= sysconf(_SC_PAGESIZE);
+        &info->threads, &info->starttime, &info->vsize, &info->rss);
     assert(apid == pid);
     close(fd);
     return TRUE;
@@ -324,7 +323,8 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     if(options->show_uptime) {
         COLOR(FORE_BLUE);
         COMMA;
-        int uptime = tm - child->starttime;
+        int starttime = options->boottime + child->starttime/options->jiffie;
+        int uptime = tm - starttime;
         if(uptime > 86400) {
             printf("up %dd%dh%dm%ds", uptime / 86400,
                 uptime/3600 % 24, uptime/60 % 60 , uptime % 60);
@@ -347,14 +347,15 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     if(options->show_rss) {
         COLOR(FORE_BLUE)
         COMMA;
-        if(child->rss > 10000000000) {
-            printf("%ldGiB", child->rss >> 30);
-        } else if(child->rss > 1000000000) {
-            printf("%3.1fGiB", (double)child->rss/(1 << 30));
-        } else if(child->rss > 10000000) {
-            printf("%ldMiB", child->rss >> 20);
+        long rss = child->rss * options->pagesize;
+        if(rss > 10000000000) {
+            printf("%ldGiB", rss >> 30);
+        } else if(rss > 1000000000) {
+            printf("%3.1fGiB", (double)rss/(1 << 30));
+        } else if(rss > 10000000) {
+            printf("%ldMiB", rss >> 20);
         } else {
-            printf("%3.1fMiB", (double)child->rss/(1 << 20));
+            printf("%3.1fMiB", (double)rss/(1 << 20));
         }
         COLOR(FORE_RESET);
     }
@@ -457,6 +458,20 @@ void free_processes(process_info_t *tbl, int num) {
     free(tbl);
 }
 
+long get_boot_time() {
+    char buf[16384];
+    int fd = open("/proc/stat", O_RDONLY);
+    assert(fd >= 0);
+    int len = read(fd, buf, 16383);
+    assert(len > 0);
+    buf[len] = 0;
+    char *btime = strstr(buf, "btime ");
+    assert(btime);
+    long res = strtol(btime+6, NULL, 10);
+    close(fd);
+    return res;
+}
+
 int main(int argc, char **argv) {
     bosstree_opt_t options = {
         all: TRUE,
@@ -472,7 +487,10 @@ int main(int argc, char **argv) {
         show_rss: FALSE,
         show_cpu: FALSE,
         color: isatty(1),
-        monitor: 0.0
+        monitor: 0.0,
+        jiffie: sysconf(_SC_CLK_TCK),
+        pagesize: sysconf(_SC_CLK_TCK),
+        boottime: get_boot_time()
         };
     parse_options(argc, argv, &options);
     process_info_t *tbl;
