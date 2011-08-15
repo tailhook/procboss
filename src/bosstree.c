@@ -494,7 +494,7 @@ int main(int argc, char **argv) {
         }
         while(1) {
             if(options.color) {
-                printf("\033[H");
+                printf("\033[1J");
             } else {
                 printf("----------\n");
             }
