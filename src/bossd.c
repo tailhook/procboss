@@ -91,6 +91,7 @@ void decide_dead(char *name, config_process_t *process, int status) {
         WIFSIGNALED(status) ? WTERMSIG(status) : -1,
         WIFEXITED(status) ? WEXITSTATUS(status) : -1);
     if(stopping) return;
+    if(process->_entry.pending == PENDING_DOWN) return;
     double delta = process->_entry.dead_time - process->_entry.start_time;
     if(delta >= config.bossd.timeouts.successful_run) {
         process->_entry.bad_attempts = 0;
@@ -340,6 +341,7 @@ void main_loop() {
         if(!stopping) {
             CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
                 if(item->value._entry.status != PROC_DEAD) continue;
+                if(item->value._entry.pending == PENDING_DOWN) continue;
                 double start_time = item->value._entry.dead_time;
                 if(item->value._entry.bad_attempts
                     > config.bossd.timeouts.retries) {
