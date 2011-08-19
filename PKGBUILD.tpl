@@ -7,7 +7,6 @@ pkgdesc="A process supervisor"
 arch=('i686' 'x86_64')
 url="http://github.com/tailhook/procboss"
 license=('MIT')
-depends=('coyaml')
 makedepends=('coyaml' 'docutils')
 backup=("etc/bossd.yaml")
 source=(https://github.com/downloads/tailhook/procboss/$pkgname-$pkgver.tar.gz)
