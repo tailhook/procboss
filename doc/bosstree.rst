@@ -43,6 +43,7 @@ Display options:
    -U       Don't show uptime of the process
    -N       Don't show name of the process
    -r       Show RSS(Resident Set Size) of each process
+   -v       Show virtual memory size of each process
    -u       Show CPU usage of each process (in monitor mode)
    -o       Colorize output
    -O       Dont' colorize output

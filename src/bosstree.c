@@ -37,6 +37,7 @@ typedef struct bosstree_opt_s {
     int show_name;
     int show_threads;
     int show_rss;
+    int show_vsize;
     int show_cpu;
 
     int color;
@@ -148,6 +149,7 @@ void print_usage(FILE *file) {
         "   -U       Don't show uptime of the process\n"
         "   -N       Don't show name of the process\n"
         "   -r       Show RSS(Resident Set Size) of each process\n"
+        "   -v       Show virtual memory size of each process\n"
         "   -u       Show CPU usage of each process (in monitor mode)\n"
         "   -o       Colorize output\n"
         "   -O       Dont' colorize output\n"
@@ -159,7 +161,7 @@ void print_usage(FILE *file) {
 
 int parse_options(int argc, char **argv, bosstree_opt_t *options) {
     int opt;
-    while((opt = getopt(argc, argv, "AC:P:dcahpoOm:NrtuU")) != -1) {
+    while((opt = getopt(argc, argv, "AC:P:dcahpoOm:NrtuUv")) != -1) {
         switch(opt) {
         case 'A': options->all = TRUE;
             break;
@@ -175,6 +177,7 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
         case 'U': options->show_uptime = FALSE; break;
         case 'N': options->show_name = FALSE; break;
         case 'r': options->show_rss = TRUE; break;
+        case 'v': options->show_vsize = TRUE; break;
         case 'u': options->show_cpu = TRUE; break;
         case 'm': options->monitor = strtod(optarg, NULL); break;
         case 'o': options->color = TRUE; break;
@@ -383,6 +386,21 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         }
         COLOR(FORE_RESET);
     }
+    if(options->show_vsize) {
+        COLOR(FORE_BLUE)
+        COMMA;
+        long rss = child->vsize;
+        if(rss > 10000000000) {
+            printf("v%ldGiB", rss >> 30);
+        } else if(rss > 1000000000) {
+            printf("v%3.1fGiB", (double)rss/(1 << 30));
+        } else if(rss > 10000000) {
+            printf("v%ldMiB", rss >> 20);
+        } else {
+            printf("v%3.1fMiB", (double)rss/(1 << 20));
+        }
+        COLOR(FORE_RESET);
+    }
     if(options->show_cmd) {
         COMMA;
         for(int i = 0; i < child->cmd_len; ++i) {
@@ -580,11 +598,12 @@ int main(int argc, char **argv) {
         show_uptime: TRUE,
         show_name: TRUE,
         show_rss: FALSE,
+        show_vsize: FALSE,
         show_cpu: FALSE,
         color: isatty(1),
         monitor: 0.0,
         jiffie: sysconf(_SC_CLK_TCK),
-        pagesize: sysconf(_SC_CLK_TCK),
+        pagesize: sysconf(_SC_PAGE_SIZE),
         boottime: get_boot_time()
         };
     parse_options(argc, argv, &options);
