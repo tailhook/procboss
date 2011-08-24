@@ -94,12 +94,13 @@ def build(bld):
         features     = ['c', 'cprogram'],
         source       = [
             'src/bosstree.c',
+            'src/config.c',
             'src/util.c',
             ],
         target       = 'bosstree',
         includes     = ['src'],
         cflags       = ['-std=c99', '-Wall'],
-        lib          = [],
+        lib          = ['coyaml', 'yaml'],
         )
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
         source='doc/bossd.rst', target='doc/bossd.8')

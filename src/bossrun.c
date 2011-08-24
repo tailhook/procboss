@@ -1,8 +1,10 @@
+#define _BSD_SOURCE
 #define _POSIX_SOURCE
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/signalfd.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -143,8 +145,31 @@ void reap_signal() {
     }
 }
 
+void read_config(int argc, char **argv) {
+    coyaml_context_t ctx;
+    if(!config_context(&ctx, &config)) {
+        perror(argv[0]);
+        exit(1);
+    }
+    coyaml_cli_prepare_or_exit(&ctx, argc, argv);
+    coyaml_readfile_or_exit(&ctx);
+    coyaml_env_parse_or_exit(&ctx);
+    coyaml_cli_parse_or_exit(&ctx, argc, argv);
+    configuration_name = realpath(ctx.root_filename, NULL);
+    if(!configuration_name) {
+        perror(argv[0]);
+        exit(1);
+    }
+    configuration_name_len = strlen(configuration_name);
+    coyaml_context_free(&ctx);
+    CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+        item->value._name = item->key;
+        item->value._name_len = item->key_len;
+    }
+}
+
 int main(int argc, char **argv) {
-    config_load(&config, argc, argv);
+    read_config(argc, argv);
     init_signals();
     if(config.bossrun.fifo_len) {
         init_control(config.bossrun.fifo);

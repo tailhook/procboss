@@ -17,6 +17,7 @@
 #include <time.h>
 
 #include "util.h"
+#include "config.h"
 
 #define TRUE 1
 #define FALSE 0
@@ -29,6 +30,7 @@ typedef struct bosstree_opt_s {
     int detached;
     int children;
 
+    int show_hier;
     int show_cmd;
     int show_pid;
     int show_uptime;
@@ -55,6 +57,9 @@ typedef enum process_kind_enum {
     SENTINEL
 } process_kind_t;
 
+struct process_info_s;
+struct entry_s;
+
 typedef struct process_info_s {
     process_kind_t kind;
     int pid;
@@ -80,8 +85,23 @@ typedef struct process_info_s {
     struct process_info_s *parent;
     struct process_info_s *boss;
     TAILQ_HEAD(children_s, process_info_s) children;
+    TAILQ_HEAD(entries_s, entry_s) entries;
     TAILQ_ENTRY(child_entry_s) chentry;
 } process_info_t;
+
+typedef enum status_enum {
+    S_NORMAL,
+    S_DOWN,
+    S_STALLED,
+    S_ORPHAN
+} entrystatus_t;
+
+typedef struct entry_s {
+    TAILQ_ENTRY(entry_entry_s) entries;
+    entrystatus_t status;
+    process_info_t *process;
+    char *name;
+} entry_t;
 
 enum color_enum {
     BRIGHT = 1,
@@ -121,6 +141,7 @@ void print_usage(FILE *file) {
         "   -c       Show children of started processes\n"
         "\n"
         "Display options:\n"
+        "   -H       Don't show hierarchy (useful for scripts)\n"
         "   -a       Show command-line of each process\n"
         "   -p       Show pid of each process\n"
         "   -t       Show thread number of each process\n"
@@ -382,25 +403,51 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
 #undef COMMA
 }
 
+void read_config(config_main_t *config, char *filename) {
+    coyaml_context_t *ctx = config_context(NULL, config);
+    ctx->root_filename = filename;
+    coyaml_readfile_or_exit(ctx);
+    coyaml_context_free(ctx);
+}
+
 void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
     char prefix[128];
     int prefixlen = 0;
     for(int i = 0; i < num; ++i) {
         if(tbl[i].kind == BOSS) {
+
             print_proc(&tbl[i], options, FORE_GREEN);
             printf("\n");
             strcpy(prefix, "  │");
             prefixlen = strlen(prefix);
-            for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
-                child; child=TAILQ_NEXT(child, chentry)) {
-                if(TAILQ_NEXT(child, chentry)) {
-                    printf("%.*s├─", prefixlen-3, prefix);
-                } else {
-                    printf("%.*s└─", prefixlen-3, prefix);
+
+            entry_t *child;
+            TAILQ_FOREACH(child, &tbl[i].entries, entries) {
+                if(options->show_hier) {
+                    if(TAILQ_NEXT(child, entries)) {
+                        printf("%.*s├─", prefixlen-3, prefix);
+                    } else {
+                        printf("%.*s└─", prefixlen-3, prefix);
+                    }
                 }
-                print_proc(child, options, 0);
-                printf("\n");
+                if(child->process) {
+                    if(child->status == S_STALLED
+                        || child->status == S_ORPHAN) {
+                        print_proc(child->process, options, FORE_RED);
+                    } else {
+                        print_proc(child->process, options, 0);
+                    }
+                    printf("\n");
+                } else {
+                    if(options->color) {
+                        printf("\033[%dm%s,down\033[0m\n",
+                            FORE_RED, child->name);
+                    } else {
+                        printf("%s,down\n", child->name);
+                    }
+                }
             }
+
         }
     }
     if(options->detached) {
@@ -417,6 +464,7 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
 void sort_processes(process_info_t *tbl, int num) {
     for(int i = 0; i < num; ++i) {
         TAILQ_INIT(&tbl[i].children);
+        TAILQ_INIT(&tbl[i].entries);
     }
     for(int i = 0; i < num; ++i) {
         int found = FALSE;
@@ -429,6 +477,9 @@ void sort_processes(process_info_t *tbl, int num) {
                     tbl[j].kind = BOSS;
                     if(!tbl[j].name) {
                         tbl[j].name = tbl[j].cmd;
+                        if(!tbl[j].bossconfig) {
+                            tbl[j].bossconfig = strdup(tbl[i].bossconfig);
+                        }
                     }
                     if(tbl[i].pid == tbl[i].mypid) {
                         tbl[i].kind = BOSS_CHILD;
@@ -450,6 +501,53 @@ void sort_processes(process_info_t *tbl, int num) {
             }
         }
     }
+    for(int i = 0; i < num; ++i) {
+        if(tbl[i].kind != BOSS) continue;
+        config_main_t config;
+        read_config(&config, tbl[i].bossconfig);
+        CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+            entry_t *entry = malloc(sizeof(entry_t));
+            entry->status = S_DOWN;
+            TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
+            entry->name = strdup(item->key);
+            entry->process = NULL;
+            for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
+                child; child=TAILQ_NEXT(child, chentry)) {
+                if(strcmp(child->name, item->key))
+                    continue;
+                entry->process = child;
+                entry->status = S_NORMAL;
+            }
+        }
+        config_free(&config);
+        for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
+            child; child=TAILQ_NEXT(child, chentry)) {
+            if(!child->bosspid) {
+                entry_t *entry = malloc(sizeof(entry_t));
+                entry->status = S_ORPHAN;
+                TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
+                entry->name = NULL;
+                entry->process = child;
+            } else {
+                int found = FALSE;
+                entry_t *entry;
+                TAILQ_FOREACH(entry, &tbl[i].entries, entries) {
+                    if(!strcmp(entry->name, child->name)
+                        && entry->process == child) {
+                        found = TRUE;
+                        break;
+                    }
+                }
+                if(!found) {
+                    entry = malloc(sizeof(entry_t));
+                    entry->status = S_STALLED;
+                    TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
+                    entry->name = child->name;
+                    entry->process = child;
+                }
+            }
+        }
+    }
 }
 
 void free_processes(process_info_t *tbl, int num) {
@@ -457,6 +555,13 @@ void free_processes(process_info_t *tbl, int num) {
         if(tbl[i].cmd) free(tbl[i].cmd);
         if(tbl[i].bossconfig) free(tbl[i].bossconfig);
         if(tbl[i].name != tbl[i].cmd) free(tbl[i].name);
+        for(entry_t *nxt, *cur = TAILQ_FIRST(&tbl[i].entries); cur; cur=nxt) {
+            nxt = TAILQ_NEXT(cur, entries);
+            if(cur->name) {
+                free(cur->name);
+            }
+            free(cur);
+        }
     }
     free(tbl);
 }
@@ -468,6 +573,7 @@ int main(int argc, char **argv) {
         pid: 0,
         detached: FALSE,
         children: FALSE,
+        show_hier: TRUE,
         show_cmd: FALSE,
         show_pid: FALSE,
         show_threads: FALSE,
