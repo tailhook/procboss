@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/queue.h>
+#include <sys/time.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -81,7 +82,9 @@ typedef struct process_info_s {
     long threads;
     long vsize;
     long rss;
-    long cpu;
+    double cpu;
+    long cpu_time;
+    long up_time;
 
     struct process_info_s *parent;
     struct process_info_s *boss;
@@ -212,7 +215,7 @@ int parse_entry(int pid, char *data, int dlen, process_info_t *info) {
     return TRUE;
 }
 
-int parse_stat(int pid, process_info_t *info) {
+int parse_stat(int pid, process_info_t *info, bosstree_opt_t *options) {
     char filename[64];
     sprintf(filename, "/proc/%d/stat", pid);
     int fd = open(filename, O_RDONLY);
@@ -221,6 +224,8 @@ int parse_stat(int pid, process_info_t *info) {
     int apid;
     int len = read(fd, buf, 4095);
     assert(len >= 0);
+    struct timeval tm;
+    gettimeofday(&tm, NULL);
     buf[len] = 0;
     long utime, stime, cutime, cstime;
     sscanf(buf,
@@ -232,6 +237,9 @@ int parse_stat(int pid, process_info_t *info) {
         &info->tty, &info->tpgid,
         &utime, &stime, &cutime, &cstime,
         &info->threads, &info->starttime, &info->vsize, &info->rss);
+    info->cpu_time = utime+stime;
+    info->up_time = (tm.tv_sec - options->boottime)*options->jiffie
+        + tm.tv_usec * options->jiffie / 1000000;
     assert(apid == pid);
     close(fd);
     return TRUE;
@@ -296,7 +304,7 @@ int parse_environ(int pid, process_info_t *info) {
     return TRUE;
 }
 
-int find_processes(process_info_t **res) {
+int find_processes(process_info_t **res, bosstree_opt_t *options) {
     int size = 2;
     int cur = 0;
     process_info_t *processes = malloc(sizeof(process_info_t)*size);
@@ -314,7 +322,7 @@ int find_processes(process_info_t **res) {
         if(!pid) continue;
         memset(processes+cur, 0, sizeof(process_info_t));
         processes[cur].pid = pid;
-        if(!parse_stat(pid, &processes[cur]))
+        if(!parse_stat(pid, &processes[cur], options))
             continue;
         if(!parse_arguments(pid, &processes[cur]))
             continue;
@@ -333,7 +341,6 @@ int find_processes(process_info_t **res) {
 
 void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     int started = FALSE;
-    int tm = time(NULL);
 #define COLOR(a) if(!color && options->color) { printf("\033[%dm", (a)); }
 #define COMMA if(started) { putchar(','); } else { started = TRUE; }
     if(color && options->color) {
@@ -350,8 +357,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     if(options->show_uptime) {
         COLOR(FORE_BLUE);
         COMMA;
-        int starttime = options->boottime + child->starttime/options->jiffie;
-        int uptime = tm - starttime;
+        int uptime = child->up_time / options->jiffie;
         if(uptime > 86400) {
             printf("up %dd%dh%dm%ds", uptime / 86400,
                 uptime/3600 % 24, uptime/60 % 60 , uptime % 60);
@@ -369,6 +375,16 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_BLUE);
         COMMA;
         printf("%ld threads", child->threads);
+        COLOR(FORE_RESET);
+    }
+    if(options->show_cpu) {
+        COLOR(FORE_BLUE)
+        COMMA;
+        if(child->cpu) {
+            printf("%4.1f%%", child->cpu*100);
+        } else {
+            printf("-- %%");
+        }
         COLOR(FORE_RESET);
     }
     if(options->show_rss) {
@@ -568,6 +584,19 @@ void sort_processes(process_info_t *tbl, int num) {
     }
 }
 
+void compare_processes(process_info_t *tbl1, int num1,
+                       process_info_t *tbl2, int num2) {
+    for(int i = 0; i < num1; ++i) {
+        for(int j = 0; j < num2; ++j) {
+            if(tbl1[i].pid == tbl2[j].pid) {
+                tbl1[i].cpu = (double)(tbl1[i].cpu_time - tbl2[j].cpu_time)
+                    / (tbl1[i].up_time - tbl2[j].up_time);
+                break;
+            }
+        }
+    }
+}
+
 void free_processes(process_info_t *tbl, int num) {
     for(int i = 0; i < num; ++i) {
         if(tbl[i].cmd) free(tbl[i].cmd);
@@ -617,21 +646,27 @@ int main(int argc, char **argv) {
         if(options.color) {
             printf("\033[1J");
         }
+        num = find_processes(&tbl, &options);
+        sort_processes(tbl, num);
+        print_processes(tbl, num, &options);
         while(1) {
             if(options.color) {
                 printf("\033[1J");
             } else {
                 printf("----------\n");
             }
-
-            num = find_processes(&tbl);
+            process_info_t *tbl2;
+            int num2 = find_processes(&tbl2, &options);
+            compare_processes(tbl2, num2, tbl, num);
+            free_processes(tbl, num);
+            tbl = tbl2;
+            num = num2;
             sort_processes(tbl, num);
             print_processes(tbl, num, &options);
-            free_processes(tbl, num);
             nanosleep(&tm, NULL);
         }
     } else {
-        num = find_processes(&tbl);
+        num = find_processes(&tbl, &options);
         sort_processes(tbl, num);
         print_processes(tbl, num, &options);
         free_processes(tbl, num);
