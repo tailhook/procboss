@@ -15,7 +15,5 @@ Processes:
     files:
       0: !UnixSocket  # unix socket for fastcgi
         path: /var/run/django-socket
-        user: trac
-        group: http
         mode: 0660
 

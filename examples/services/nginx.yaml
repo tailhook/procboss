@@ -8,4 +8,3 @@ arguments:
 - /etc/nginx/nginx.conf
 - -g # let's set some config
 - daemon off
--
