@@ -112,15 +112,15 @@ def build(bld):
         source='doc/bossrc.rst', target='doc/bossrc.1')
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
         source='doc/bosstree.rst', target='doc/bosstree.1')
-    bld(rule='${GZIP} ${SRC}',
+    bld(rule='${GZIP} -f ${SRC}',
         source='doc/bossd.8', target='doc/bossd.8.gz')
-    bld(rule='${GZIP} ${SRC}',
+    bld(rule='${GZIP} -f ${SRC}',
         source='doc/bossctl.8', target='doc/bossctl.8.gz')
-    bld(rule='${GZIP} ${SRC}',
+    bld(rule='${GZIP} -f ${SRC}',
         source='doc/bossrun.1', target='doc/bossrun.1.gz')
-    bld(rule='${GZIP} ${SRC}',
+    bld(rule='${GZIP} -f ${SRC}',
         source='doc/bossrc.1', target='doc/bossrc.1.gz')
-    bld(rule='${GZIP} ${SRC}',
+    bld(rule='${GZIP} -f ${SRC}',
         source='doc/bosstree.1', target='doc/bosstree.1.gz')
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossrc',
         'completion/zsh_bossrc')
