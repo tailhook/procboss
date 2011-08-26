@@ -50,3 +50,59 @@ void start_processes(int nproc, config_process_t *processes[]) {
         }
     }
 }
+
+void sigterm_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGTERM);
+        }
+    }
+}
+
+void sighup_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGHUP);
+        }
+    }
+}
+
+void sigkill_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGKILL);
+        }
+    }
+}
+
+void sigusr1_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGUSR1);
+        }
+    }
+}
+
+void sigusr2_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGUSR2);
+        }
+    }
+}
+
+void sigint_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGINT);
+        }
+    }
+}
+
+void sigquit_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(PROCESS_EXISTS(processes[i])) {
+            kill(processes[i]->_entry.pid, SIGQUIT);
+        }
+    }
+}
