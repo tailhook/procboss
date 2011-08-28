@@ -7,6 +7,7 @@ __meta__:
   description: |
     Process supervisor and control utilities
   has-arguments: yes
+  mixed-arguments: no
   c_include:
   - entry.h
 
