@@ -239,7 +239,7 @@ int parse_stat(int pid, process_info_t *info, bosstree_opt_t *options) {
         &info->threads, &info->starttime, &info->vsize, &info->rss);
     info->cpu_time = utime+stime;
     info->up_time = (tm.tv_sec - options->boottime)*options->jiffie
-        + tm.tv_usec * options->jiffie / 1000000;
+        + tm.tv_usec * options->jiffie / 1000000 - info->starttime;
     assert(apid == pid);
     close(fd);
     return TRUE;
