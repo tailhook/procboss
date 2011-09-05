@@ -13,14 +13,13 @@ Features:
 * Control interface throught fifo to stop/restart processes
 * User-friendly and featureful configuration in yaml
 * Bash and Zsh completion for remote control utilities
+* Logging of process deaths and restarts
 
 To Do:
 
 * Running multiple similar processes (like in fastcgi), optionally keeping
   some shared file descriptor open
 * Configuration reloading (partially works, by restarting in-place)
-* Better report of processes status
-* Good logging of process shutdowns
 
 Will never happen:
 
