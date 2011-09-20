@@ -88,7 +88,7 @@ typedef struct process_info_s {
     struct process_info_s *boss;
     TAILQ_HEAD(children_s, process_info_s) children;
     TAILQ_HEAD(entries_s, entry_s) entries;
-    TAILQ_ENTRY(child_entry_s) chentry;
+    TAILQ_ENTRY(process_info_s) chentry;
 } process_info_t;
 
 typedef enum status_enum {
@@ -99,7 +99,7 @@ typedef enum status_enum {
 } entrystatus_t;
 
 typedef struct entry_s {
-    TAILQ_ENTRY(entry_entry_s) entries;
+    TAILQ_ENTRY(entry_s) entries;
     entrystatus_t status;
     process_info_t *process;
     char *name;
@@ -516,7 +516,6 @@ void sort_processes(process_info_t *tbl, int num) {
         TAILQ_INIT(&tbl[i].entries);
     }
     for(int i = 0; i < num; ++i) {
-        int found = FALSE;
         for(int j = 0; j < num; ++j) {
             if(tbl[i].ppid == tbl[j].pid) {
                 tbl[i].parent = &tbl[j];
