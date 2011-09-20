@@ -39,7 +39,7 @@ def build(bld):
             ],
         target       = 'bossrun',
         includes     = ['src'],
-        cflags       = ['-std=c99', '-Wall'],
+        cflags       = ['-std=gnu99', '-Wall'],
         lib          = ['yaml', 'coyaml'],
         )
     bld(
@@ -57,7 +57,7 @@ def build(bld):
             ],
         target       = 'bossd',
         includes     = ['src'],
-        cflags       = ['-std=c99', '-Wall'],
+        cflags       = ['-std=gnu99', '-Wall'],
         lib          = ['yaml', 'coyaml'],
         )
     bld(
@@ -71,7 +71,7 @@ def build(bld):
             ],
         target       = 'bossrc',
         includes     = ['src', 'linenoise'],
-        cflags       = ['-std=c99', '-Wall'],
+        cflags       = ['-std=gnu99', '-Wall'],
         lib          = ['yaml', 'coyaml'],
         defines      = [ 'NOACTIONS' ],
         )
@@ -86,7 +86,7 @@ def build(bld):
             ],
         target       = 'bossctl',
         includes     = ['src', 'linenoise'],
-        cflags       = ['-std=c99', '-Wall'],
+        cflags       = ['-std=gnu99', '-Wall'],
         lib          = ['yaml', 'coyaml'],
         defines      = [ 'NOACTIONS' ],
         )
@@ -99,7 +99,7 @@ def build(bld):
             ],
         target       = 'bosstree',
         includes     = ['src'],
-        cflags       = ['-std=c99', '-Wall'],
+        cflags       = ['-std=gnu99', '-Wall'],
         lib          = ['coyaml', 'yaml'],
         )
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
