@@ -1,5 +1,3 @@
-#define _BSD_SOURCE
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <getopt.h>
 #include <stddef.h>
@@ -198,7 +196,7 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
     return opt;
 }
 
-int parse_entry(int pid, char *data, int dlen, process_info_t *info) {
+int parse_child_entry(int pid, char *data, int dlen, process_info_t *info) {
     assert(dlen > 1);
     char cfgpath[dlen+1];
     char pname[dlen+1];
@@ -208,10 +206,38 @@ int parse_entry(int pid, char *data, int dlen, process_info_t *info) {
         cfgpath, &bosspid, pname, &childpid) != 4) {
         return FALSE;
     }
-    info->bossconfig = strdup(cfgpath);
+    if(!info->bossconfig) {
+        info->bossconfig = strdup(cfgpath);
+    }
     info->bosspid = bosspid;
     info->name = strdup(pname);
     info->mypid = childpid;
+    if(info->pid == info->mypid) {
+        info->kind = DETACHED;
+    } else {
+        info->kind = DETACHED_ANCESTOR;
+    }
+    return TRUE;
+}
+
+int parse_boss_entry(int pid, char *data, int dlen, process_info_t *info) {
+    assert(dlen > 1);
+    char cfgpath[dlen+1];
+    int bosspid;
+    if(sscanf(data, "%[^,],%d",
+        cfgpath, &bosspid) != 2) {
+        return FALSE;
+    }
+    if(info->bossconfig) free(info->bossconfig);
+    info->bossconfig = strdup(cfgpath);
+    info->mypid = bosspid;
+    char *name = strrchr(info->cmd, '/');
+    if(!name) name = info->cmd;
+    else name += 1;
+    info->name = strdup(name);
+    if(info->pid == bosspid) {
+        info->kind = BOSS;
+    }
     return TRUE;
 }
 
@@ -267,40 +293,27 @@ int parse_arguments(int pid, process_info_t *info) {
 int parse_environ(int pid, process_info_t *info) {
     char filename[64];
     sprintf(filename, "/proc/%d/environ", pid);
-    int fd = open(filename, O_RDONLY);
-    if(fd < 0) return FALSE;
-    char buf[4096] = { 0 };
-    int bufof = 1;
-    while(1) {
-        int buflen = read(fd, buf+bufof, sizeof(buf)-bufof);
-        if(buflen <= 0) break;
-        buflen += bufof;
-        char *pos = memmem(buf, buflen,
-                           "\0BOSS_CHILD=", strlen("BOSS_CHILD=")+1);
-        if(pos) {
-            char *end = memchr(pos+1, 0, buf+buflen-pos-1);
-            if(!end) {
-                if(pos < buf + buflen/2) {
-                    // TODO(tailhook) log bad boss_child record
-                    break;
-                } else {
-                    memmove(buf, pos, buf + buflen - pos);
-                    bufof = buf + buflen - pos;
-                    continue;
-                }
+    FILE *f = fopen(filename, "r");
+    if(!f) return FALSE;
+    ssize_t linelen;
+    size_t buflen = 0;
+    char *line = NULL;
+    while((linelen = getdelim(&line, &buflen, 0, f)) > 0) {
+        if(!strncmp(line, "BOSS_CHILD=", 11)) {
+            if(!parse_child_entry(pid, line + 12, strlen(line + 12), info)) {
+                fclose(f);
+                return FALSE;
             }
-            char *realpos = pos + strlen("BOSS_CHILD=") + 1;
-            parse_entry(pid, realpos, end - realpos, info);
-            break;
-        }
-        if(buflen >= strlen("BOSS_CHILD=") + 1) {
-            bufof = strlen("BOSS_CHILD=") + 1;
-            memmove(buf, buf + buflen - bufof, bufof);
-        } else {
-            bufof = buflen;
+        } else if(!strncmp(line, "BOSSD=", 6)
+               || !strncmp(line, "BOSSRUN=", 8)){
+            char *pos = strchr(line, '=')+1;
+            if(!parse_boss_entry(pid, pos, strlen(pos), info)) {
+                fclose(f);
+                return FALSE;
+            }
         }
     }
-    close(fd);
+    fclose(f);
     return TRUE;
 }
 
@@ -437,11 +450,13 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
 #undef COMMA
 }
 
-void read_config(config_main_t *config, char *filename) {
+bool read_config(config_main_t *config, char *filename) {
     coyaml_context_t *ctx = config_context(NULL, config);
     ctx->root_filename = filename;
-    coyaml_readfile_or_exit(ctx);
+    int rc = coyaml_readfile(ctx);
+    if(rc < 0) return FALSE;
     coyaml_context_free(ctx);
+    return TRUE;
 }
 
 void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
@@ -507,38 +522,17 @@ void sort_processes(process_info_t *tbl, int num) {
                 tbl[i].parent = &tbl[j];
                 TAILQ_INSERT_TAIL(&tbl[j].children,
                     &tbl[i], chentry);
-                if(tbl[i].bosspid == tbl[j].pid) {
-                    tbl[j].kind = BOSS;
-                    if(!tbl[j].name) {
-                        tbl[j].name = tbl[j].cmd;
-                        if(!tbl[j].bossconfig) {
-                            tbl[j].bossconfig = strdup(tbl[i].bossconfig);
-                        }
-                    }
-                    if(tbl[i].pid == tbl[i].mypid) {
-                        tbl[i].kind = BOSS_CHILD;
-                    } else {
-                        tbl[i].kind = BOSS_ANCESTOR;
-                    }
-                    found = TRUE;
-                }
                 break;
             }
         }
-        if(!found) {
-            if(tbl[i].bosspid) {
-                if(tbl[i].pid == tbl[i].mypid) {
-                    tbl[i].kind = DETACHED;
-                } else {
-                    tbl[i].kind = DETACHED_ANCESTOR;
-                }
-            }
-        }
     }
+
     for(int i = 0; i < num; ++i) {
         if(tbl[i].kind != BOSS) continue;
         config_main_t config;
-        read_config(&config, tbl[i].bossconfig);
+        if(!read_config(&config, tbl[i].bossconfig)) {
+            fprintf(stderr, "Can't read config ``%s'': %m", tbl[i].bossconfig);
+        }
         CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
             entry_t *entry = malloc(sizeof(entry_t));
             entry->status = S_DOWN;
@@ -578,6 +572,13 @@ void sort_processes(process_info_t *tbl, int num) {
                     TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
                     entry->name = child->name;
                     entry->process = child;
+                }
+                if(child->bosspid == tbl[i].pid) {
+                    if(child->pid == child->mypid) {
+                        child->kind = BOSS_CHILD;
+                    } else {
+                        child->kind = BOSS_ANCESTOR;
+                    }
                 }
             }
         }
