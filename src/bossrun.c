@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <poll.h>
 #include <ctype.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "runcommand.h"
@@ -25,6 +26,7 @@ int signal_fd;
 int stopping = FALSE;
 char *configuration_name = "bossrun";
 int configuration_name_len = 7; // strlen("bossrun");
+extern char **environ;
 
 void init_signals() {
     sigset_t mask;
@@ -168,8 +170,34 @@ void read_config(int argc, char **argv) {
     }
 }
 
+void fix_environ(char **argv) {
+    char buf[configuration_name_len+32];
+    sprintf(buf, "BOSSRUN=%s,%d", configuration_name, getpid());
+    char *curvalue = getenv("BOSSRUN");
+    if(!curvalue || strcmp(curvalue, buf + 8)) {
+        int envlen = 2;
+        for(char **e = environ; *e; ++e)
+            envlen += 1;
+        char **newenv = alloca(envlen*sizeof(char*));
+        memcpy(newenv, environ, (envlen-1)*sizeof(char*));
+        char **e;
+        for(e = newenv; *e; ++e) {
+            if(!strncmp(*e, "BOSSRUN=", 8)) {
+                *e = buf;
+                break;
+            }
+        }
+        if(!*e) {
+            *e = buf;
+            *++e = NULL;
+        }
+        STDASSERT(execve(argv[0], argv, newenv));
+    }
+}
+
 int main(int argc, char **argv) {
     read_config(argc, argv);
+    fix_environ(argv);
     init_signals();
     if(config.bossrun.fifo_len) {
         init_control(config.bossrun.fifo);

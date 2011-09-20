@@ -396,9 +396,20 @@ void main_loop() {
     }
 }
 
+void fix_environ(char **argv) {
+    char buf[configuration_name_len+32];
+    sprintf(buf, "BOSSD=%s,%d", configuration_name, getpid());
+    char *curvalue = getenv("BOSSD");
+    if(!curvalue || strcmp(curvalue, buf + 6)) {
+        char *newenv[] = {buf, NULL};
+        STDASSERT(execve(argv[0], argv, newenv));
+    }
+}
+
 int main(int argc, char **argv) {
     recover_args = argv;
     read_config(argc, argv);
+    fix_environ(argv);
     init_signals();
     openlogs();
     boottime = get_boot_time();
