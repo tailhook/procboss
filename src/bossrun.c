@@ -191,7 +191,8 @@ void fix_environ(char **argv) {
             *e = buf;
             *++e = NULL;
         }
-        STDASSERT(execve(argv[0], argv, newenv));
+        environ = newenv;
+        STDASSERT(execvp(argv[0], argv));
     }
 }
 
