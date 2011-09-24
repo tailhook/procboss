@@ -1,3 +1,4 @@
+#define _XOPEN_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -12,6 +13,7 @@
 #include "config.h"
 #include "bossdcmd.h"
 #include "shellutil.h"
+#include "proxy.h"
 
 config_main_t config;
 
@@ -71,19 +73,44 @@ int main(int argc, char *argv[]) {
     }
 
     if(argc > optind) {
-        struct iovec vec[(argc-optind)*2];
-        for(int i = 0; i < argc-optind; ++i) {
-            vec[i*2].iov_base = argv[optind + i];
-            vec[i*2].iov_len = strlen(argv[optind + i]);
-            if(i == argc-optind-1) {
-                vec[i*2+1].iov_base = "\n";
-                vec[i*2+1].iov_len = 1;
-            } else {
-                vec[i*2+1].iov_base = " ";
-                vec[i*2+1].iov_len = 1;
+        if(!strcmp(argv[optind], "show")) {
+            int pty = make_pty();
+            optind += 1;
+            struct iovec vec[(argc-optind)*2+3];
+            vec[0].iov_base = "startin ";
+            vec[0].iov_len = strlen("startin ");
+            vec[1].iov_base = ptsname(pty);
+            vec[1].iov_len = strlen(vec[1].iov_base);
+            vec[2].iov_base = " ";
+            vec[2].iov_len = 1;
+            for(int i = 0; i < argc-optind; ++i) {
+                vec[i*2+3].iov_base = argv[optind + i];
+                vec[i*2+3].iov_len = strlen(argv[optind + i]);
+                if(i == argc-optind-1) {
+                    vec[i*2+4].iov_base = "\n";
+                    vec[i*2+4].iov_len = 1;
+                } else {
+                    vec[i*2+4].iov_base = " ";
+                    vec[i*2+4].iov_len = 1;
+                }
             }
+            writev(fd, vec, sizeof(vec)/sizeof(vec[0]));
+            start_proxy(pty);
+        } else {
+            struct iovec vec[(argc-optind)*2];
+            for(int i = 0; i < argc-optind; ++i) {
+                vec[i*2].iov_base = argv[optind + i];
+                vec[i*2].iov_len = strlen(argv[optind + i]);
+                if(i == argc-optind-1) {
+                    vec[i*2+1].iov_base = "\n";
+                    vec[i*2+1].iov_len = 1;
+                } else {
+                    vec[i*2+1].iov_base = " ";
+                    vec[i*2+1].iov_len = 1;
+                }
+            }
+            writev(fd, vec, sizeof(vec)/sizeof(vec[0]));
         }
-        writev(fd, vec, sizeof(vec)/sizeof(vec[0]));
     } else {
         run_shell(fd);
     }

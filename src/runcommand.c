@@ -171,9 +171,8 @@ static void drop_privileges(config_process_t *process) {
     }
 }
 
-int fork_and_run(config_process_t *process) {
-    int i;
-    int parentpid = getpid();
+
+int do_fork(config_process_t *process) {
     int res = fork();
     if(res < 0) {
         process->_entry.status = PROC_ERROR;
@@ -192,6 +191,11 @@ int fork_and_run(config_process_t *process) {
         LSTARTUP("Started \"%s\" with pid %d", process->_name, res);
         return res; // We are parent, just return pid
     }
+    return res;
+}
+
+void do_run(config_process_t *process, int parentpid) {
+    int i;
     sigset_t mask;
     sigfillset(&mask);
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
@@ -232,6 +236,14 @@ int fork_and_run(config_process_t *process) {
 
     CHECK(execve(process->executable_path, argv, environ),
         "Can't execute");
-    return 0;
 }
 
+int fork_and_run(config_process_t *process) {
+    int parentpid = getpid();
+    int pid = do_fork(process);
+    if(pid < 0) return pid;
+    if(!pid) {
+        do_run(process, parentpid);
+    }
+    return pid;
+}

@@ -82,6 +82,7 @@ def build(bld):
             'src/bossdcmd.c',
             'src/config.c',
             'src/shellutil.c',
+            'src/proxy.c',
             'src/bossctl.c',
             ],
         target       = 'bossctl',

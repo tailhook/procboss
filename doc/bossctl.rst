@@ -44,6 +44,16 @@ start *PROCESS1* *PROCESS2*...
     starts processes, even if they are were crashed too much and sleeping big
     timeout. Also this command marks process to be restarted after death
 
+startin /dev/pts/*NUM* *PROCESS*
+
+    starts process with the specified tty as controlling terminal (used
+    internally for show command)
+
+show *PROCESS*
+
+    starts process in current terminal (internally works by creating new pty
+    and proxying). Proccess need to be down when running this command.
+
 sigterm *PROCESS1* *PROCESS2*...
 sighup *PROCESS1* *PROCESS2*...
 sigkill *PROCESS1* *PROCESS2*...
@@ -54,6 +64,11 @@ sigquit *PROCESS1* *PROCESS2*...
 
     sends respective signal to a process. If process dies it's death is
     recorded as all other, so expect process to banned when you kill to often
+
+sig *NUM* *PROCESS1* *PROCESS2*...
+
+    sends a signal by a number (useful to send signals having to separate
+    command, like SIGSEGV)
 
 Process Matching
 ----------------

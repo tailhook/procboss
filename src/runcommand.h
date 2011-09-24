@@ -4,5 +4,7 @@
 #include "config.h"
 
 int fork_and_run(config_process_t *process);
+void do_run(config_process_t *process, int parentpid);
+int do_fork(config_process_t *process);
 
 #endif // _H_RUNCOMMAND

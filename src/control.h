@@ -5,10 +5,13 @@
 
 typedef enum command_type_enum {
     CMD_PROCMAN,  // Process management commands
+    CMD_PROCMAN1, // Process management with 1 arg
     CMD_NOARG
 } command_type_t;
 
 typedef void (*cmd_procman_t)(int nproc, config_process_t *processes[]);
+typedef void (*cmd_procman1_t)(char *terminal,
+    int nproc, config_process_t *processes[]);
 typedef void (*cmd_noarg_t)();
 
 typedef struct command_def_s {
@@ -17,6 +20,7 @@ typedef struct command_def_s {
     command_type_t type;
     union {
         cmd_procman_t procman;  // Process management commands
+        cmd_procman1_t procman1;  // Process management with 1 argument
         cmd_noarg_t noarg;
     } fun;
 } command_def_t;

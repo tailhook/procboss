@@ -38,6 +38,9 @@ static void completion(const char *buf, linenoiseCompletions *lc) {
                 case CMD_PROCMAN:
                     complete_process(buf, strrchr(buf, ' ')+1 - buf, lc);
                     return;
+                case CMD_PROCMAN1:
+                    complete_process(buf, strrchr(buf, ' ')+1 - buf, lc);
+                    return;
                 }
             } else {
                 // complete just command

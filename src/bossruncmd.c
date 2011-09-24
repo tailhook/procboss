@@ -20,6 +20,8 @@ command_def_t bossrun_cmd_table[] = {
     description: "Stop specified processes"},
    {name: "start", type: CMD_PROCMAN, fun: {noarg: ACTION(start_processes)},
     description: "Start specified processes if not already running"},
+   {name: "sig", type: CMD_PROCMAN1, fun: {noarg: ACTION(signal_proc)},
+    description: "Send signal by number"},
    {name: "sigterm", type: CMD_PROCMAN, fun: {noarg: ACTION(sigterm_processes)},
     description: "Send TERM to specified processes"},
    {name: "sighup", type: CMD_PROCMAN, fun: {noarg: ACTION(sighup_processes)},

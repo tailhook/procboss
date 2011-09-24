@@ -76,7 +76,7 @@ static int match(char *data, int argc, char *argv[], int pattern) {
     return FALSE;
 }
 
-void run_procman(command_def_t *cmd, int argc, char *argv[]) {
+void run_procman(command_def_t *cmd, int argc, char *argv[], int skip) {
     optind = 0;
     int opt;
     int pattern = FALSE;
@@ -102,6 +102,8 @@ void run_procman(command_def_t *cmd, int argc, char *argv[]) {
             return;
         }
     }
+    optind += skip;
+    if(optind >= argc) return;
     config_process_t *processes[MAX_PROCESSES];
     int nproc = 0;
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
@@ -148,7 +150,14 @@ void run_procman(command_def_t *cmd, int argc, char *argv[]) {
         fflush(stderr);
         return;
     }
-    cmd->fun.procman(nproc, processes);
+    switch(skip) {
+    case 0:
+        cmd->fun.procman(nproc, processes);
+        break;
+    case 1:
+        cmd->fun.procman1(argv[optind - skip], nproc, processes);
+        break;
+    }
 }
 
 void parse_spaces(char *data, int len, command_def_t *cmdtable) {
@@ -175,7 +184,10 @@ void parse_spaces(char *data, int len, command_def_t *cmdtable) {
         if(!strcmp(argv[0], def->name)) {
             switch(def->type) {
             case CMD_PROCMAN:
-                run_procman(def, argc, argv);
+                run_procman(def, argc, argv, 0);
+                return;
+            case CMD_PROCMAN1:
+                run_procman(def, argc, argv, 1);
                 return;
             case CMD_NOARG:
                 if(argc != 1) {

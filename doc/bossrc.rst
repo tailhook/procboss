@@ -54,6 +54,11 @@ sigquit *PROCESS1* *PROCESS2*...
     sends respective signal to a process (that will probably die, and
     kill bossrun in running in failfast mode, not like restart)
 
+sig *NUM* *PROCESS1* *PROCESS2*...
+
+    sends a signal by a number (useful to send signals having to separate
+    command, like SIGSEGV)
+
 Process Matching
 ----------------
 
