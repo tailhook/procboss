@@ -13,7 +13,7 @@ boss-controled processes viewer
 Synopsis
 --------
 
-| bosstree [ -acdmpurtoUN ] [-A | -C config.yaml | -P pid]
+| bosstree [ -acdmpurtoHUN ] [-A | -C config.yaml | -P pid]
 
 Description
 -----------
@@ -37,6 +37,7 @@ Process selection options:
 
 Display options:
 
+   -H       Don't show hierarchy (useful for scripts)
    -a       Show command-line of each process
    -p       Show pid of each process
    -t       Show thread number of each process

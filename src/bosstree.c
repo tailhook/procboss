@@ -162,7 +162,7 @@ void print_usage(FILE *file) {
 
 int parse_options(int argc, char **argv, bosstree_opt_t *options) {
     int opt;
-    while((opt = getopt(argc, argv, "AC:P:dcahpoOm:NrtuUv")) != -1) {
+    while((opt = getopt(argc, argv, "AC:P:dcHahpoOm:NrtuUv")) != -1) {
         switch(opt) {
         case 'A': options->all = TRUE;
             break;
@@ -183,6 +183,7 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
         case 'm': options->monitor = strtod(optarg, NULL); break;
         case 'o': options->color = TRUE; break;
         case 'O': options->color = FALSE; break;
+        case 'H': options->show_hier = FALSE; break;
         case 'h':
             print_usage(stdout);
             exit(0);
