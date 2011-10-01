@@ -402,6 +402,11 @@ void fix_environ(char **argv) {
     char *curvalue = getenv("BOSSD");
     if(!curvalue || strcmp(curvalue, buf + 6)) {
         char *newenv[] = {buf, NULL};
+        if(argv[0][0] != '/') {
+            char buf2[PATH_MAX];
+            STDASSERT(readlink("/proc/self/exe", buf2, PATH_MAX));
+            argv[0] = buf2;
+        }
         STDASSERT(execve(argv[0], argv, newenv));
     }
 }
