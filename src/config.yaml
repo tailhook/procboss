@@ -48,6 +48,35 @@ __types__:
         default is zero, which means dynamically alocated port.
 
   process:
+    min-instances: !Int
+      default: 1
+      min: 1
+      max: 1000000
+      description:
+        Minimum processes of this kind to start and keep running
+    max-instances: !Int
+      default: 1
+      min: 1
+      max: 1000000
+      description: >
+        Maximum processes of this kind to start and keep running. If there are
+        more that this number of processes running when recovering, some of
+        processes will be killed.
+    spare-kill-signal: !Int
+      default: 15
+      min: 1
+      max: 15
+      description: >
+        Signal to kill process when there are excessive number of instances.
+        Same signal is sent on `decr` command from `bossctl`.
+    enable-subst: !Bool
+      default: yes
+      descripton: >
+        Enable substitution of $(variables) inside arguments. Two implemented
+        so far are `seq0` and `seq1` are 0- and 1-based index of process among
+        instances of the same process. It's minimal number of the process, with
+        guaranty that no duplicates are simultaneously running. But in case of
+        some processes are dead, sequence numbers can have gaps inside.
     user: !String
       description: >
         User name or uid to setuid before starting (and after bindding
