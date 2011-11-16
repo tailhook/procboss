@@ -89,6 +89,7 @@ typedef struct process_info_s {
     TAILQ_HEAD(children_s, process_info_s) children;
     TAILQ_HEAD(entries_s, entry_s) entries;
     TAILQ_ENTRY(process_info_s) chentry;
+    TAILQ_ENTRY(process_info_s) runentry;
 } process_info_t;
 
 typedef enum status_enum {
@@ -101,7 +102,7 @@ typedef enum status_enum {
 typedef struct entry_s {
     TAILQ_ENTRY(entry_s) entries;
     entrystatus_t status;
-    process_info_t *process;
+    TAILQ_HEAD(running_s, process_info_s) running;
     char *name;
 } entry_t;
 
@@ -302,6 +303,7 @@ int parse_environ(int pid, process_info_t *info) {
     while((linelen = getdelim(&line, &buflen, 0, f)) > 0) {
         if(!strncmp(line, "BOSS_CHILD=", 11)) {
             if(!parse_child_entry(pid, line + 12, strlen(line + 12), info)) {
+                free(line);
                 fclose(f);
                 return FALSE;
             }
@@ -309,11 +311,13 @@ int parse_environ(int pid, process_info_t *info) {
                || !strncmp(line, "BOSSRUN=", 8)){
             char *pos = strchr(line, '=')+1;
             if(!parse_boss_entry(pid, pos, strlen(pos), info)) {
+                free(line);
                 fclose(f);
                 return FALSE;
             }
         }
     }
+    free(line);
     fclose(f);
     return TRUE;
 }
@@ -473,22 +477,33 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
 
             entry_t *child;
             TAILQ_FOREACH(child, &tbl[i].entries, entries) {
-                if(options->show_hier) {
-                    if(TAILQ_NEXT(child, entries)) {
-                        printf("%.*s├─", prefixlen-3, prefix);
-                    } else {
-                        printf("%.*s└─", prefixlen-3, prefix);
+                if(TAILQ_FIRST(&child->running)) {
+                    process_info_t *proc;
+                    TAILQ_FOREACH(proc, &child->running, runentry) {
+                        if(options->show_hier) {
+                            if(TAILQ_NEXT(proc, runentry)
+                                || TAILQ_NEXT(child, entries)) {
+                                printf("%.*s├─", prefixlen-3, prefix);
+                            } else {
+                                printf("%.*s└─", prefixlen-3, prefix);
+                            }
+                        }
+                        if(child->status == S_STALLED
+                            || child->status == S_ORPHAN) {
+                            print_proc(proc, options, FORE_RED);
+                        } else {
+                            print_proc(proc, options, 0);
+                        }
+                        printf("\n");
                     }
-                }
-                if(child->process) {
-                    if(child->status == S_STALLED
-                        || child->status == S_ORPHAN) {
-                        print_proc(child->process, options, FORE_RED);
-                    } else {
-                        print_proc(child->process, options, 0);
-                    }
-                    printf("\n");
                 } else {
+                    if(options->show_hier) {
+                        if(TAILQ_NEXT(child, entries)) {
+                            printf("%.*s├─", prefixlen-3, prefix);
+                        } else {
+                            printf("%.*s└─", prefixlen-3, prefix);
+                        }
+                    }
                     if(options->color) {
                         printf("\033[%dm%s,down\033[0m\n",
                             FORE_RED, child->name);
@@ -538,12 +553,12 @@ void sort_processes(process_info_t *tbl, int num) {
             entry->status = S_DOWN;
             TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
             entry->name = strdup(item->key);
-            entry->process = NULL;
+            TAILQ_INIT(&entry->running);
             for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
                 child; child=TAILQ_NEXT(child, chentry)) {
                 if(strcmp(child->name, item->key))
                     continue;
-                entry->process = child;
+                TAILQ_INSERT_TAIL(&entry->running, child, runentry);
                 entry->status = S_NORMAL;
             }
         }
@@ -555,23 +570,29 @@ void sort_processes(process_info_t *tbl, int num) {
                 entry->status = S_ORPHAN;
                 TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
                 entry->name = NULL;
-                entry->process = child;
+                TAILQ_INIT(&entry->running);
+                TAILQ_INSERT_TAIL(&entry->running, child, runentry);
             } else {
                 int found = FALSE;
                 entry_t *entry;
                 TAILQ_FOREACH(entry, &tbl[i].entries, entries) {
-                    if(!strcmp(entry->name, child->name)
-                        && entry->process == child) {
-                        found = TRUE;
-                        break;
+                    if(!strcmp(entry->name, child->name)) {
+                        process_info_t *proc;
+                        TAILQ_FOREACH(proc, &entry->running, runentry) {
+                            if(proc == child) {
+                                found = TRUE;
+                                goto break2;
+                            }
+                        }
                     }
                 }
+                break2:
                 if(!found) {
                     entry = malloc(sizeof(entry_t));
                     entry->status = S_STALLED;
                     TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
                     entry->name = child->name;
-                    entry->process = child;
+                    TAILQ_INSERT_TAIL(&entry->running, child, runentry);
                 }
                 if(child->bosspid == tbl[i].pid) {
                     if(child->pid == child->mypid) {
