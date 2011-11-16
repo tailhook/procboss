@@ -104,13 +104,16 @@ void run_procman(command_def_t *cmd, int argc, char *argv[], int skip) {
     }
     optind += skip;
     if(optind >= argc) return;
-    config_process_t *processes[MAX_PROCESSES];
+    process_entry_t *processes[MAX_PROCESSES];
+    process_entry_t *tmpproc;
     int nproc = 0;
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(nproc == MAX_PROCESSES) break;  // sorry
         if(match_name) {
             if(match(item->key, argc-optind, argv+optind, pattern)) {
-                processes[nproc++] = &item->value;
+                CIRCLEQ_FOREACH(tmpproc, &item->value._entries.entries, cq) {
+                    processes[nproc++] = tmpproc;
+                }
                 continue;
             }
         }
@@ -122,25 +125,32 @@ void run_procman(command_def_t *cmd, int argc, char *argv[], int skip) {
                 rbind = item->value.executable_path;
             }
             if(match(rbind, argc-optind, argv+optind, pattern)) {
-                processes[nproc++] = &item->value;
+                CIRCLEQ_FOREACH(tmpproc, &item->value._entries.entries, cq) {
+                    processes[nproc++] = tmpproc;
+                }
                 continue;
             }
         }
         if(match_args) {
             CONFIG_STRING_LOOP(arg, item->value.arguments) {
                 if(match(arg->value, argc-optind, argv+optind, pattern)) {
-                    processes[nproc++] = &item->value;
+                    CIRCLEQ_FOREACH(tmpproc, &item->value._entries.entries, cq)
+                    {
+                        processes[nproc++] = tmpproc;
+                    }
                     goto CONTINUE;
                 }
             }
         }
-        if(match_pid && PROCESS_EXISTS(&item->value)) {
-            char num[12];
-            sprintf(num, "%d", item->value._entry.pid);
-            num[11] = 0;
-            if(match(num, argc-optind, argv+optind, pattern)) {
-                processes[nproc++] = &item->value;
-                continue;
+        if(match_pid && item->value._entries.running) {
+            CIRCLEQ_FOREACH(tmpproc, &item->value._entries.entries, cq) {
+                char num[12];
+                sprintf(num, "%d", tmpproc->pid);
+                num[11] = 0;
+                if(match(num, argc-optind, argv+optind, pattern)) {
+                    processes[nproc++] = tmpproc;
+                    continue;
+                }
             }
         }
         CONTINUE: continue;

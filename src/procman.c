@@ -22,59 +22,59 @@ static inline int CHECK(int res, char *msg) {
     return res;
 }
 
-void restart_process(config_process_t *process) {
-    status_t s = process->_entry.status;
-    if(s == PROC_STARTING || s == PROC_ALIVE) {
-        process->_entry.pending = PENDING_RESTART;
-        process->_entry.status = PROC_STOPPING;
-        kill(process->_entry.pid, SIGTERM);
-    } else if(s != PROC_STOPPING) {
-        fork_and_run(process);
+void kill_single(config_process_t *process, int signal) {
+    process_entry_t *entry;
+    CIRCLEQ_FOREACH(entry, &process->_entries.entries, cq) {
+        kill(entry->pid, signal);
     }
+}
+
+
+void restart_process(process_entry_t *process) {
+    process->all->pending = PENDING_RESTART;
+    kill(process->pid, SIGTERM);
 }
 
 void send_all(int sig) {
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-        if(PROCESS_EXISTS(&item->value)) {
-            kill(item->value._entry.pid, sig);
+        if(&item->value._entries.running) {
+            kill_single(&item->value, sig);
         }
     }
 }
 
-void restart_processes(int nproc, config_process_t *processes[]) {
+void restart_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
         restart_process(processes[i]);
     }
 }
 
-void stop_processes(int nproc, config_process_t *processes[]) {
+void stop_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        processes[i]->_entry.pending = PENDING_DOWN;
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGTERM);
+        processes[i]->all->pending = PENDING_DOWN;
+        kill(processes[i]->pid, SIGTERM);
+    }
+}
+
+void start_processes(int nproc, process_entry_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(processes[i]->all->pending != PENDING_RESTART) {
+            processes[i]->all->pending = PENDING_UP;
+        }
+        if(processes[i]->all->running < processes[i]->config->min_instances) {
+            fork_and_run(processes[i]->config);
         }
     }
 }
 
-void start_processes(int nproc, config_process_t *processes[]) {
+void startin_proc(char *term, int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(processes[i]->_entry.pending != PENDING_RESTART) {
-            processes[i]->_entry.pending = PENDING_UP;
+        if(processes[i]->all->pending != PENDING_RESTART) {
+            processes[i]->all->pending = PENDING_UP;
         }
-        if(!PROCESS_EXISTS(processes[i])) {
-            fork_and_run(processes[i]);
-        }
-    }
-}
-
-void startin_proc(char *term, int nproc, config_process_t *processes[]) {
-    for(int i = 0; i < nproc; ++i) {
-        if(processes[i]->_entry.pending != PENDING_RESTART) {
-            processes[i]->_entry.pending = PENDING_UP;
-        }
-        if(!PROCESS_EXISTS(processes[i])) {
+        if(processes[i]->all->running < processes[i]->config->max_instances) {
             int parentpid = getpid();
-            int pid = do_fork(processes[i]);
+            int pid = do_fork(processes[i]->config);
             if(!pid) {
                 int fd = open(term, O_RDWR);
                 CHECK(fd, "Can't open terminal");
@@ -85,73 +85,57 @@ void startin_proc(char *term, int nproc, config_process_t *processes[]) {
                 if(ioctl(fd, TIOCSCTTY, 0) < 0)
                     logstd(LOG_STARTUP, "Can't attach terminal");
                 if(fd != 0 && fd != 1 && fd != 2) close(fd);
-                do_run(processes[i], parentpid);
+                do_run(processes[i]->config, parentpid);
             }
         }
     }
 }
 
-void signal_proc(char *sig, int nproc, config_process_t *processes[]) {
+void signal_proc(char *sig, int nproc, process_entry_t *processes[]) {
     int signum = atoi(sig);
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, signum);
-        }
+        kill(processes[i]->pid, signum);
     }
 }
 
-void sigterm_processes(int nproc, config_process_t *processes[]) {
+void sigterm_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGTERM);
-        }
+        kill(processes[i]->pid, SIGTERM);
     }
 }
 
-void sighup_processes(int nproc, config_process_t *processes[]) {
+void sighup_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGHUP);
-        }
+        kill(processes[i]->pid, SIGHUP);
     }
 }
 
-void sigkill_processes(int nproc, config_process_t *processes[]) {
+void sigkill_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGKILL);
-        }
+        kill(processes[i]->pid, SIGKILL);
     }
 }
 
-void sigusr1_processes(int nproc, config_process_t *processes[]) {
+void sigusr1_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGUSR1);
-        }
+        kill(processes[i]->pid, SIGUSR1);
     }
 }
 
-void sigusr2_processes(int nproc, config_process_t *processes[]) {
+void sigusr2_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGUSR2);
-        }
+        kill(processes[i]->pid, SIGUSR2);
     }
 }
 
-void sigint_processes(int nproc, config_process_t *processes[]) {
+void sigint_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGINT);
-        }
+        kill(processes[i]->pid, SIGINT);
     }
 }
 
-void sigquit_processes(int nproc, config_process_t *processes[]) {
+void sigquit_processes(int nproc, process_entry_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(PROCESS_EXISTS(processes[i])) {
-            kill(processes[i]->_entry.pid, SIGQUIT);
-        }
+        kill(processes[i]->pid, SIGQUIT);
     }
 }

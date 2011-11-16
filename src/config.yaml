@@ -145,7 +145,7 @@ __types__:
         Files to open before setuid and exec. Useful to open files as root and
         then dropping privileges. This is a mapping from descriptor number to
         a file definition structure.
-    _entry: !CType process_entry_t
+    _entries: !CType process_entries_t
     _name: !String
 
 bossrun:

@@ -88,21 +88,21 @@ void stop_supervisor() {
     return;
 }
 
-void decide_dead(char *name, config_process_t *process, int status) {
+void decide_dead(process_entry_t *process, int status) {
     LDEAD("Process \"%s\" with pid %d dead on signal %d or with status %d",
-        name, process->_entry.pid,
+        process->config->_name, process->pid,
         WIFSIGNALED(status) ? WTERMSIG(status) : -1,
         WIFEXITED(status) ? WEXITSTATUS(status) : -1);
     if(stopping) return;
-    if(process->_entry.pending == PENDING_DOWN) return;
-    double delta = process->_entry.dead_time - process->_entry.start_time;
-    if(process->_entry.pending == PENDING_RESTART
+    if(process->all->pending == PENDING_DOWN) return;
+    double delta = process->all->dead_time - process->all->last_start_time;
+    if(process->all->pending == PENDING_RESTART
         || delta >= config.bossd.timeouts.successful_run) {
-        process->_entry.bad_attempts = 0;
-        fork_and_run(process);
+        process->all->bad_attempts = 0;
+        fork_and_run(process->config);
         return;
     }
-    process->_entry.bad_attempts += 1;
+    process->all->bad_attempts += 1;
     // Will pick up on next loop
 }
 
@@ -120,20 +120,20 @@ void reap_children() {
             break;
         }
         CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-            status_t s = item->value._entry.status;
-            if((s == PROC_STARTING || s == PROC_ALIVE
-                || s == PROC_STOPPING) && item->value._entry.pid == pid) {
-                if(item->value._entry.pending != PENDING_DOWN) {
-                    item->value._entry.status = PROC_DEAD;
-                } else {
-                    item->value._entry.status = PROC_STOPPED;
+            process_entry_t *entry;
+            CIRCLEQ_FOREACH(entry, &item->value._entries.entries, cq) {
+                if(entry->pid == pid) {
+                    CIRCLEQ_REMOVE(&item->value._entries.entries, entry, cq);
+                    if((item->value._entries.running -= 1) <= 0) {
+                        item->value._entries.dead_time = TVAL2DOUBLE(tm);
+                    }
+                    live_processes -= 1;
+
+                    decide_dead(entry, status);
+
+                    free(entry);
+                    break;
                 }
-                item->value._entry.dead_time = TVAL2DOUBLE(tm);
-                live_processes -= 1;
-
-                decide_dead(item->key, &item->value, status);
-
-                break;
             }
         }
     }
@@ -200,6 +200,11 @@ void read_config(int argc, char **argv) {
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         item->value._name = item->key;
         item->value._name_len = item->key_len;
+        item->value._entries.running = 0;
+        if(item->value.min_instances > item->value.max_instances) {
+            item->value.max_instances = item->value.min_instances;
+        }
+        CIRCLEQ_INIT(&item->value._entries.entries);
     }
 }
 
@@ -270,9 +275,16 @@ void parse_entry(int pid, char *data, int dlen) {
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(!strcmp(item->key, pname)) {
             LRECOVER("Process %d recovered as \"%s\"", pid, pname);
-            item->value._entry.pid = pid;
-            item->value._entry.start_time = boottime + startjif*jiffie;
-            item->value._entry.status = PROC_ALIVE;
+            process_entry_t *entry = malloc(sizeof(process_entry_t));
+            if(!entry) {
+                LCRITICAL("No memory to recover process entries");
+                abort();
+            }
+            entry->pid = pid;
+            entry->start_time = boottime + startjif*jiffie;
+            entry->config = &item->value;
+            entry->all = &item->value._entries;
+            CIRCLEQ_INSERT_TAIL(&item->value._entries.entries, entry, cq);
             live_processes += 1;
             return;
         }
@@ -359,10 +371,11 @@ void main_loop() {
         double next_time = 0;
         if(!stopping) {
             CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-                if(item->value._entry.status != PROC_DEAD) continue;
-                if(item->value._entry.pending == PENDING_DOWN) continue;
-                double start_time = item->value._entry.dead_time;
-                if(item->value._entry.bad_attempts
+                if(item->value._entries.running
+                    >= item->value.min_instances) continue;
+                if(item->value._entries.pending == PENDING_DOWN) continue;
+                double start_time = item->value._entries.dead_time;
+                if(item->value._entries.bad_attempts
                     > config.bossd.timeouts.retries) {
                     start_time += config.bossd.timeouts.big_restart;
                 } else {
@@ -428,7 +441,7 @@ int main(int argc, char **argv) {
     }
     recover_processes();
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-        if(item->value._entry.status == PROC_NEW) {
+        while(item->value._entries.running < item->value.min_instances) {
             fork_and_run(&item->value);
         }
     }

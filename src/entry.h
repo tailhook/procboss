@@ -2,12 +2,10 @@
 #define _H_ENTRY
 
 #include <sys/types.h>
+#include <sys/queue.h>
 #include <time.h>
 
-#define PROCESS_EXISTS(proc) ( \
-    (proc)->_entry.status == PROC_STARTING \
-    || (proc)->_entry.status == PROC_ALIVE \
-    || (proc)->_entry.status == PROC_STOPPING)
+
 #define TIME2DOUBLE(tval) ((double)(tval).tv_sec + 0.000000001*(tval).tv_nsec)
 #define TVAL2DOUBLE(tval) ((double)(tval).tv_sec + 0.000001*(tval).tv_usec)
 
@@ -28,14 +26,22 @@ typedef enum {
 } pending_status_t;
 
 typedef struct process_entry_s {
+    CIRCLEQ_ENTRY(process_entry_s) cq;
+    pid_t pid;
+    double start_time;
+    struct config_process_s *config;
+    struct process_entries_s *all;
+} process_entry_t;
+
+typedef struct process_entries_s {
+    CIRCLEQ_HEAD(process_entries_head_s, process_entry_s) entries;
+    int running;
     status_t status;
     pending_status_t pending;
-    pid_t pid;
-    // Only for bossd:
     int bad_attempts;
-    double start_time;
+    double last_start_time;
     double dead_time;
-} process_entry_t;
+} process_entries_t;
 
 extern int live_processes;
 

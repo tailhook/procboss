@@ -54,20 +54,21 @@ void stop_supervisor() {
     return;
 }
 
-void decide_dead(char *name, config_process_t *process, int status) {
+void decide_dead(process_entry_t *process, int status) {
     if(stopping) return;
-    if(config.bossrun.failfast && process->_entry.pending != PENDING_RESTART
-                               && process->_entry.pending != PENDING_DOWN) {
+    if(config.bossrun.failfast && process->all->pending != PENDING_RESTART
+                               && process->all->pending != PENDING_DOWN) {
         LWARNING(config.bossrun.failfast_message,
-            name, process->_entry.pid,
+            process->config->_name, process->pid,
             WIFSIGNALED(status) ? WTERMSIG(status) : -1,
             WIFEXITED(status) ? WEXITSTATUS(status) : -1);
         stop_supervisor();
         return;
     }
-    if((config.bossrun.restart && process->_entry.pending == PENDING_UP)
-        || process->_entry.pending == PENDING_RESTART) {
-        fork_and_run(process);
+    if(((config.bossrun.restart && process->all->pending == PENDING_UP)
+            || process->all->pending == PENDING_RESTART)
+       && process->all->running < process->config->min_instances) {
+        fork_and_run(process->config);
         return;
     }
 }
@@ -85,17 +86,21 @@ void reap_children() {
             break;
         }
         CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
-            status_t s = item->value._entry.status;
-            if((s == PROC_STARTING || s == PROC_ALIVE
-                || s == PROC_STOPPING) && item->value._entry.pid == pid) {
-                item->value._entry.status = PROC_DEAD;
-                live_processes -= 1;
+            process_entry_t *entry;
+            CIRCLEQ_FOREACH(entry, &item->value._entries.entries, cq) {
+                if(entry->pid == pid) {
+                    CIRCLEQ_REMOVE(&item->value._entries.entries, entry, cq);
+                    item->value._entries.running -= 1;
+                    live_processes -= 1;
 
-                decide_dead(item->key, &item->value, status);
+                    decide_dead(entry, status);
 
-                break;
+                    free(entry);
+                    goto end_of_processes;
+                }
             }
         }
+        end_of_processes: continue;
     }
 }
 
@@ -206,7 +211,14 @@ int main(int argc, char **argv) {
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         item->value._name = item->key;
         item->value._name_len = item->key_len;
-        fork_and_run(&item->value);
+        item->value._entries.running = 0;
+        if(item->value.min_instances > item->value.max_instances) {
+            item->value.max_instances = item->value.min_instances;
+        }
+        CIRCLEQ_INIT(&item->value._entries.entries);
+        while(item->value._entries.running < item->value.min_instances) {
+            fork_and_run(&item->value);
+        }
     }
     while(live_processes > 0) {
         struct pollfd socks[2] = {

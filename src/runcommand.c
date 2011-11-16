@@ -173,19 +173,25 @@ static void drop_privileges(config_process_t *process) {
 
 
 int do_fork(config_process_t *process) {
+    process_entry_t *entry = malloc(sizeof(process_entry_t));
+    if(!entry) return -1;
     int res = fork();
     if(res < 0) {
-        process->_entry.status = PROC_ERROR;
+        free(entry);
         return -1;  // Error occured
     }
     if(res > 0) {
         struct timeval tm;
         gettimeofday(&tm, NULL);
-        process->_entry.status = PROC_STARTING;
-        process->_entry.pid = res;
-        process->_entry.start_time = TVAL2DOUBLE(tm);
-        if(process->_entry.pending == PENDING_RESTART) {
-            process->_entry.pending = PENDING_UP;
+        process->_entries.status = PROC_STARTING;
+        process->_entries.running += 1;
+        entry->pid = res;
+        process->_entries.last_start_time = entry->start_time = TVAL2DOUBLE(tm);
+        entry->config = process;
+        entry->all = &process->_entries;
+        CIRCLEQ_INSERT_TAIL(&process->_entries.entries, entry, cq);
+        if(process->_entries.pending == PENDING_RESTART) {
+            process->_entries.pending = PENDING_UP;
         }
         live_processes += 1;
         LSTARTUP("Started \"%s\" with pid %d", process->_name, res);
