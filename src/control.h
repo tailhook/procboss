@@ -9,9 +9,9 @@ typedef enum command_type_enum {
     CMD_NOARG
 } command_type_t;
 
-typedef void (*cmd_procman_t)(int nproc, config_process_t *processes[]);
+typedef void (*cmd_procman_t)(int nproc, process_entry_t *processes[]);
 typedef void (*cmd_procman1_t)(char *terminal,
-    int nproc, config_process_t *processes[]);
+    int nproc, process_entry_t *processes[]);
 typedef void (*cmd_noarg_t)();
 
 typedef struct command_def_s {
