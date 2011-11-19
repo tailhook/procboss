@@ -46,6 +46,8 @@ __types__:
       description: >
         Port to bind tcp socket to (can be < 1024 is boss is run as root). By
         default is zero, which means dynamically alocated port.
+    _fd: !Int
+      default: -1
 
   process:
     min-instances: !Int

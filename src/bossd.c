@@ -26,6 +26,7 @@
 #include "bossdcmd.h"
 #include "log.h"
 #include "util.h"
+#include "sockets.h"
 
 config_main_t config;
 int signal_fd;
@@ -439,6 +440,7 @@ int main(int argc, char **argv) {
     if(config.bossd.pid_file_len) {
         write_pid(config.bossd.pid_file);
     }
+    open_sockets(TRUE);
     recover_processes();
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         while(item->value._entries.running < item->value.min_instances) {

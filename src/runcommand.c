@@ -20,6 +20,7 @@
 
 #include "runcommand.h"
 #include "log.h"
+#include "sockets.h"
 
 extern char *configuration_name;
 extern int configuration_name_len;
@@ -30,48 +31,6 @@ static inline int CHECK(int res, char *msg) {
         exit(127);
     }
     return res;
-}
-
-static int open_tcp(config_file_t *file) {
-    int tfd = CHECK(socket(AF_INET, SOCK_STREAM, 0),
-        "Can't create socket");
-    struct sockaddr_in addr;
-    addr.sin_family = AF_INET;
-    inet_aton(file->host, &addr.sin_addr);
-    addr.sin_port = htons(file->port);
-    int i = 1;
-    CHECK(setsockopt(tfd, SOL_SOCKET, SO_REUSEADDR, &i, sizeof(i)),
-        "Can't set socket option");
-    CHECK(bind(tfd, &addr, sizeof(addr)),
-        "Can't bind to {{ file.host }}:{{ file.port }}");
-    CHECK(listen(tfd, SOMAXCONN),
-        "Can't listen on {{ file.host }}:{{ file.port }}");
-    return tfd;
-}
-
-static int open_unix(config_file_t *file) {
-    int tfd = CHECK(socket(AF_UNIX, SOCK_STREAM, 0),
-        "Can't create socket");
-    struct sockaddr_un addr;
-    addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, file->path);
-    int addr_len = file->path_len + 1 + sizeof(addr.sun_family);
-    if(connect(tfd, (struct sockaddr *)&addr, addr_len) != -1) {
-        CHECK(-1, "Socket still used");
-    }
-    switch(errno) {
-    case ECONNREFUSED: unlink(file->path); break;
-    case ENOENT: break; // OK
-    default: CHECK(-1, "Error probing socket");
-    }
-    CHECK(bind(tfd, &addr, addr_len), "Can't bind to path");
-    if(file->mode) {
-        CHECK(fchmod(tfd, file->mode),
-            "Can't set file mode"); // fchmod does not work
-    }
-    // TODO(tailhook) set user and group
-    CHECK(listen(tfd, SOMAXCONN), "Can't listen");
-    return tfd;
 }
 
 static int open_file(config_file_t *file) {
@@ -104,13 +63,28 @@ static void open_files(config_process_t *process) {
     CONFIG_LONG_FILE_LOOP(item, process->files) {
         int tfd;
         if(item->value.type == CONFIG_Tcp) {
-            tfd = open_tcp(&item->value);
+            if(item->value._fd >= 0) {
+                tfd = item->value._fd;
+                CHECK(listen(tfd, SOMAXCONN),
+                    "Can't listen on opened fd");
+            } else {
+                tfd = open_tcp(&item->value, TRUE);
+            }
         } else if(item->value.type == CONFIG_UnixSocket) {
-            tfd = open_unix(&item->value);
+            if(item->value._fd >= 0) {
+                tfd = item->value._fd;
+                CHECK(listen(tfd, SOMAXCONN),
+                    "Can't listen on opened fd");
+            } else {
+                tfd = open_unix(&item->value, TRUE);
+            }
         } else if(item->value.type == CONFIG_File) {
             tfd = open_file(&item->value);
         } else {
             assert(0);
+        }
+        if(tfd < 0) {
+            CHECK(tfd, "Error opening file");
         }
         if(tfd != item->key) {
             CHECK(dup2(tfd, item->key), "Can't dup file descriptor");
@@ -118,6 +92,7 @@ static void open_files(config_process_t *process) {
         }
 
     }
+    close_all(process);
 }
 
 static void set_limit(int resource, unsigned long value) {

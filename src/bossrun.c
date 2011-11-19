@@ -20,6 +20,7 @@
 #include "procman.h"
 #include "bossruncmd.h"
 #include "log.h"
+#include "sockets.h"
 
 config_main_t config;
 int signal_fd;
@@ -208,6 +209,7 @@ int main(int argc, char **argv) {
     if(config.bossrun.fifo_len) {
         init_control(config.bossrun.fifo);
     }
+    open_sockets(FALSE);
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         item->value._name = item->key;
         item->value._name_len = item->key_len;

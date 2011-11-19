@@ -7,5 +7,7 @@
 #define MAX_ARGS (100)
 // Maximum processes in single process management instruction
 #define MAX_PROCESSES (500)
+// Maximum sockets opened for all processes
+#define MAX_SOCKETS (1024)
 
 #endif // _H_CONSTANTS

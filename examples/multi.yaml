@@ -1,0 +1,43 @@
+# Some example of embedded python code, which shares fd across processes
+
+bossrun:
+  failfast: yes
+  restart: no
+
+bossd:
+  timeouts:
+    successful-run: 10
+
+Processes:
+  server:
+    min-instances: 3
+    max-instances: 10
+    executable-path: /usr/bin/python
+    arguments:
+      - python
+      - -c
+      - |
+        import socket
+        import os
+        from itertools import count
+
+        sock = socket.fromfd(3, socket.AF_INET, socket.SOCK_STREAM)
+        sock.listen(1)
+        oldtot = tot = 0
+        while True:
+          cli, addr = sock.accept()
+          cli.send(str(os.getpid()).encode('ascii'))
+          cli.close()
+    files:
+      3: !Tcp
+        host: 127.0.0.1
+        port: 7777
+    user: nobody
+    group: nobody
+  sleeper:
+    executable-path: /bin/sleep
+    arguments: [sleep, 1000000]
+
+
+
+
