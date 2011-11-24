@@ -5,8 +5,12 @@ bossrun:
   restart: no
 
 bossd:
+  fifo: /tmp/bossd-multi-example.fifo
+  pid-file: /tmp/bossd-multi-example.pid
   timeouts:
     successful-run: 10
+  logging:
+    file: /tmp/bossd-multi-example.log
 
 Processes:
   server:
