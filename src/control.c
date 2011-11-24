@@ -76,7 +76,96 @@ static int match(char *data, int argc, char *argv[], int pattern) {
     return FALSE;
 }
 
-void run_procman(command_def_t *cmd, int argc, char *argv[], int skip) {
+void run_groupman(command_def_t *cmd, int argc, char *argv[], int skip) {
+    optind = 0;
+    int opt;
+    int pattern = FALSE;
+    int match_args = FALSE;
+    int match_binary = FALSE;
+    int match_name = TRUE;
+    int match_pid = FALSE;
+    while((opt = getopt(argc, argv, "+aAbBpPnNeE")) != -1) {
+        switch(opt) {
+        case 'a': match_args = TRUE; break;
+        case 'A': match_args = FALSE; break;
+        case 'b': match_binary = TRUE; break;
+        case 'B': match_binary = FALSE; break;
+        case 'p': match_pid = TRUE; break;
+        case 'P': match_pid = FALSE; break;
+        case 'n': match_name = TRUE; break;
+        case 'N': match_name = FALSE; break;
+        case 'e': pattern = TRUE; break;
+        case 'E': pattern = FALSE; break;
+        default:
+            fprintf(stderr, "Wrong argument\n");
+            fflush(stderr);
+            return;
+        }
+    }
+    optind += skip;
+    if(optind >= argc) return;
+    config_process_t *processes[MAX_PROCESSES];
+    int nproc = 0;
+    CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
+        if(nproc == MAX_PROCESSES) break;  // sorry
+        if(match_name) {
+            if(match(item->key, argc-optind, argv+optind, pattern)) {
+                processes[nproc++] = &item->value;
+                continue;
+            }
+        }
+        if(match_binary) {
+            char *rbind = strrchr(item->value.executable_path, '/');
+            if(rbind) {
+                rbind += 1;
+            } else {
+                rbind = item->value.executable_path;
+            }
+            if(match(rbind, argc-optind, argv+optind, pattern)) {
+                processes[nproc++] = &item->value;
+                continue;
+            }
+        }
+        if(match_args) {
+            CONFIG_STRING_LOOP(arg, item->value.arguments) {
+                if(match(arg->value, argc-optind, argv+optind, pattern)) {
+                    processes[nproc++] = &item->value;
+                    goto CONTINUE;
+                }
+            }
+        }
+        if(match_pid && item->value._entries.running) {
+            process_entry_t *tmpproc;
+            CIRCLEQ_FOREACH(tmpproc, &item->value._entries.entries, cq) {
+                char num[12];
+                sprintf(num, "%d", tmpproc->pid);
+                num[11] = 0;
+                if(match(num, argc-optind, argv+optind, pattern)) {
+                    processes[nproc++] = &item->value;
+                    goto CONTINUE;
+                }
+            }
+        }
+        CONTINUE: continue;
+    }
+    if(nproc == MAX_PROCESSES) {
+        fprintf(stderr, "Maximum processes reached\n");
+        fflush(stderr);
+        return;
+    }
+    switch(skip) {
+    case 0:
+        cmd->fun.groupman(nproc, processes);
+        break;
+    case 1:
+        cmd->fun.groupman1(argv[optind - skip], nproc, processes);
+        break;
+    default:
+        abort();
+    }
+}
+
+void run_instman(command_def_t *cmd, int argc, char *argv[], int skip) {
     optind = 0;
     int opt;
     int pattern = FALSE;
@@ -162,11 +251,13 @@ void run_procman(command_def_t *cmd, int argc, char *argv[], int skip) {
     }
     switch(skip) {
     case 0:
-        cmd->fun.procman(nproc, processes);
+        cmd->fun.instman(nproc, processes);
         break;
     case 1:
-        cmd->fun.procman1(argv[optind - skip], nproc, processes);
+        cmd->fun.instman1(argv[optind - skip], nproc, processes);
         break;
+    default:
+        abort();
     }
 }
 
@@ -193,11 +284,17 @@ void parse_spaces(char *data, int len, command_def_t *cmdtable) {
     for(command_def_t *def = cmdtable; def->name; ++def) {
         if(!strcmp(argv[0], def->name)) {
             switch(def->type) {
-            case CMD_PROCMAN:
-                run_procman(def, argc, argv, 0);
+            case CMD_INSTMAN:
+                run_instman(def, argc, argv, 0);
                 return;
-            case CMD_PROCMAN1:
-                run_procman(def, argc, argv, 1);
+            case CMD_INSTMAN1:
+                run_instman(def, argc, argv, 1);
+                return;
+            case CMD_GROUPMAN:
+                run_groupman(def, argc, argv, 0);
+                return;
+            case CMD_GROUPMAN1:
+                run_groupman(def, argc, argv, 1);
                 return;
             case CMD_NOARG:
                 if(argc != 1) {

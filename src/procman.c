@@ -30,11 +30,6 @@ void kill_single(config_process_t *process, int signal) {
 }
 
 
-void restart_process(process_entry_t *process) {
-    process->all->pending = PENDING_RESTART;
-    kill(process->pid, SIGTERM);
-}
-
 void send_all(int sig) {
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(&item->value._entries.running) {
@@ -43,38 +38,40 @@ void send_all(int sig) {
     }
 }
 
-void restart_processes(int nproc, process_entry_t *processes[]) {
+void restart_processes(int nproc, config_process_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        restart_process(processes[i]);
-    }
-}
-
-void stop_processes(int nproc, process_entry_t *processes[]) {
-    for(int i = 0; i < nproc; ++i) {
-        processes[i]->all->pending = PENDING_DOWN;
-        kill(processes[i]->pid, SIGTERM);
-    }
-}
-
-void start_processes(int nproc, process_entry_t *processes[]) {
-    for(int i = 0; i < nproc; ++i) {
-        if(processes[i]->all->pending != PENDING_RESTART) {
-            processes[i]->all->pending = PENDING_UP;
-        }
-        if(processes[i]->all->running < processes[i]->config->min_instances) {
-            fork_and_run(processes[i]->config);
+        process_entry_t *entry;
+        CIRCLEQ_FOREACH(entry, &processes[i]->_entries.entries, cq) {
+            entry->dead = DEAD_RESTART;
+            kill(entry->pid, SIGTERM);
         }
     }
 }
 
-void startin_proc(char *term, int nproc, process_entry_t *processes[]) {
+void stop_processes(int nproc, config_process_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
-        if(processes[i]->all->pending != PENDING_RESTART) {
-            processes[i]->all->pending = PENDING_UP;
+        processes[i]->_entries.want_down = TRUE;
+        process_entry_t *entry;
+        CIRCLEQ_FOREACH(entry, &processes[i]->_entries.entries, cq) {
+            entry->dead = DEAD_STOP;
+            kill(entry->pid, SIGTERM);
         }
-        if(processes[i]->all->running < processes[i]->config->max_instances) {
+    }
+}
+
+void start_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        while(processes[i]->_entries.running < processes[i]->min_instances) {
+            fork_and_run(processes[i]);
+        }
+    }
+}
+
+void startin_proc(char *term, int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(processes[i]->_entries.running < processes[i]->max_instances) {
             int parentpid = getpid();
-            int pid = do_fork(processes[i]->config);
+            int pid = do_fork(processes[i]);
             if(!pid) {
                 int fd = open(term, O_RDWR);
                 CHECK(fd, "Can't open terminal");
@@ -85,7 +82,7 @@ void startin_proc(char *term, int nproc, process_entry_t *processes[]) {
                 if(ioctl(fd, TIOCSCTTY, 0) < 0)
                     logstd(LOG_STARTUP, "Can't attach terminal");
                 if(fd != 0 && fd != 1 && fd != 2) close(fd);
-                do_run(processes[i]->config, parentpid);
+                do_run(processes[i], parentpid);
             }
         }
     }

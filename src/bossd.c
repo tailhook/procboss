@@ -95,9 +95,9 @@ void decide_dead(process_entry_t *process, int status) {
         WIFSIGNALED(status) ? WTERMSIG(status) : -1,
         WIFEXITED(status) ? WEXITSTATUS(status) : -1);
     if(stopping) return;
-    if(process->all->pending == PENDING_DOWN) return;
+    if(process->dead == DEAD_STOP) return;
     double delta = process->all->dead_time - process->all->last_start_time;
-    if(process->all->pending == PENDING_RESTART
+    if(process->dead == DEAD_RESTART
         || delta >= config.bossd.timeouts.successful_run) {
         process->all->bad_attempts = 0;
         fork_and_run(process->config);
@@ -374,7 +374,7 @@ void main_loop() {
             CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
                 if(item->value._entries.running
                     >= item->value.min_instances) continue;
-                if(item->value._entries.pending == PENDING_DOWN) continue;
+                if(item->value._entries.want_down) continue;
                 double start_time = item->value._entries.dead_time;
                 if(item->value._entries.bad_attempts
                     > config.bossd.timeouts.retries) {

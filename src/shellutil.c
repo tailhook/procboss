@@ -35,10 +35,12 @@ static void completion(const char *buf, linenoiseCompletions *lc) {
                 switch(cur->type) {
                 case CMD_NOARG:
                     return; // Nothing to complete
-                case CMD_PROCMAN:
+                case CMD_INSTMAN:
+                case CMD_GROUPMAN:
                     complete_process(buf, strrchr(buf, ' ')+1 - buf, lc);
                     return;
-                case CMD_PROCMAN1:
+                case CMD_INSTMAN1:
+                case CMD_GROUPMAN1:
                     complete_process(buf, strrchr(buf, ' ')+1 - buf, lc);
                     return;
                 }

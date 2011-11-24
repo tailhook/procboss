@@ -57,8 +57,7 @@ void stop_supervisor() {
 
 void decide_dead(process_entry_t *process, int status) {
     if(stopping) return;
-    if(config.bossrun.failfast && process->all->pending != PENDING_RESTART
-                               && process->all->pending != PENDING_DOWN) {
+    if(config.bossrun.failfast && process->dead == DEAD_CRASH) {
         LWARNING(config.bossrun.failfast_message,
             process->config->_name, process->pid,
             WIFSIGNALED(status) ? WTERMSIG(status) : -1,
@@ -66,8 +65,8 @@ void decide_dead(process_entry_t *process, int status) {
         stop_supervisor();
         return;
     }
-    if(((config.bossrun.restart && process->all->pending == PENDING_UP)
-            || process->all->pending == PENDING_RESTART)
+    if(((config.bossrun.restart && process->dead != DEAD_STOP)
+        || process->dead == DEAD_RESTART)
        && process->all->running < process->config->min_instances) {
         fork_and_run(process->config);
         return;

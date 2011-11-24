@@ -65,16 +65,16 @@ static void open_files(config_process_t *process) {
         if(item->value.type == CONFIG_Tcp) {
             if(item->value._fd >= 0) {
                 tfd = item->value._fd;
-                CHECK(listen(tfd, SOMAXCONN),
-                    "Can't listen on opened fd");
+                //CHECK(listen(tfd, SOMAXCONN),
+                //    "Can't listen on opened fd");
             } else {
                 tfd = open_tcp(&item->value, TRUE);
             }
         } else if(item->value.type == CONFIG_UnixSocket) {
             if(item->value._fd >= 0) {
                 tfd = item->value._fd;
-                CHECK(listen(tfd, SOMAXCONN),
-                    "Can't listen on opened fd");
+                //CHECK(listen(tfd, SOMAXCONN),
+                //    "Can't listen on opened fd");
             } else {
                 tfd = open_unix(&item->value, TRUE);
             }
@@ -165,9 +165,6 @@ int do_fork(config_process_t *process) {
         entry->config = process;
         entry->all = &process->_entries;
         CIRCLEQ_INSERT_TAIL(&process->_entries.entries, entry, cq);
-        if(process->_entries.pending == PENDING_RESTART) {
-            process->_entries.pending = PENDING_UP;
-        }
         live_processes += 1;
         LSTARTUP("Started \"%s\" with pid %d", process->_name, res);
         return res; // We are parent, just return pid

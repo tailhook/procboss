@@ -20,14 +20,15 @@ typedef enum {
 } status_t;
 
 typedef enum {
-    PENDING_UP,
-    PENDING_DOWN,
-    PENDING_RESTART
-} pending_status_t;
+    DEAD_CRASH,
+    DEAD_STOP,
+    DEAD_RESTART
+} dead_status_t;
 
 typedef struct process_entry_s {
     CIRCLEQ_ENTRY(process_entry_s) cq;
     pid_t pid;
+    dead_status_t dead;
     double start_time;
     struct config_process_s *config;
     struct process_entries_s *all;
@@ -36,8 +37,8 @@ typedef struct process_entry_s {
 typedef struct process_entries_s {
     CIRCLEQ_HEAD(process_entries_head_s, process_entry_s) entries;
     int running;
+    int want_down;
     status_t status;
-    pending_status_t pending;
     int bad_attempts;
     double last_start_time;
     double dead_time;
