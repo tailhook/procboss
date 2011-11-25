@@ -20,6 +20,8 @@
     return -1; \
     }
 
+extern int logfile;
+
 int open_tcp(config_file_t *file, bool do_listen) {
     int tfd;
     CHECK(tfd = socket(AF_INET, SOCK_STREAM, 0),
@@ -99,6 +101,80 @@ void close_all(config_process_t *process) {
 void open_sockets(bool do_recover) {
     config_file_t *sockets[MAX_SOCKETS];
     int cur_sockets = 0;
+
+    struct dirent *entry;
+    DIR *dir = opendir("/proc/self/fd");
+    int curfd = dirfd(dir);
+    if(!dir) {
+        LSTARTUP("Can't read /proc/self/fd: %m");
+        return;
+    }
+    while((errno = 0, entry = readdir(dir))) {
+        int fd = strtol(entry->d_name, NULL, 10);
+        struct sockaddr_un addr;
+        socklen_t addrlen = sizeof(addr);
+        int res = getsockname(fd, (struct sockaddr *)&addr, &addrlen);
+        if(res < 0) {
+            if(fd > 2 && fd != curfd && fd != logfile) {
+                LRECOVER("Non-socket fd %d. Closing...", fd);
+                close(fd);
+            }
+            continue;
+        }
+
+        int found = FALSE;
+        if(addr.sun_family == AF_UNIX) {
+            CONFIG_STRING_PROCESS_LOOP(process, config.Processes) {
+                CONFIG_LONG_FILE_LOOP(file, process->value.files) {
+                    if(file->value.type != CONFIG_UnixSocket) continue;
+                    if(!strcmp(file->value.path, addr.sun_path)) {
+                        LRECOVER("Recovered fd %d as %s:%d",
+                            fd, process->key, file->key);
+                        file->value._fd = fd;
+                        sockets[cur_sockets++] = &file->value;
+                        found = TRUE;
+                        goto FOUND;
+                    }
+                }
+            }
+        } else if(addr.sun_family == AF_INET) {
+            int port = ntohs(((struct sockaddr_in *)&addr)->sin_port);
+            char *host = inet_ntoa(((struct sockaddr_in *)&addr)->sin_addr);
+            if(!host) {
+                LRECOVER("Wrong address of fd %d. Closing...", fd);
+                close(fd);
+                continue;
+            }
+            CONFIG_STRING_PROCESS_LOOP(process, config.Processes) {
+                CONFIG_LONG_FILE_LOOP(file, process->value.files) {
+                    if(file->value.type != CONFIG_Tcp) continue;
+
+                    if(!strcmp(file->value.host, host)
+                        && file->value.port == port) {
+                        LRECOVER("Recovered fd %d as %s:%d",
+                            fd, process->key, file->key);
+                        file->value._fd = fd;
+                        sockets[cur_sockets++] = &file->value;
+                        found = TRUE;
+                        goto FOUND;
+                    }
+                }
+            }
+        } else {
+            LRECOVER("Unknown address family of %d. Closing...", fd);
+            close(fd);
+        }
+        if(!found && fd > 2) {
+            close(fd);
+        }
+        FOUND: continue;
+    }
+    if(errno) {
+        LSTARTUP("Error reading procfs: %m");
+        exit(127);
+    }
+    closedir(dir);
+
     CONFIG_STRING_PROCESS_LOOP(process, config.Processes) {
         CONFIG_LONG_FILE_LOOP(file, process->value.files) {
             if(file->value.type != CONFIG_Tcp
@@ -112,6 +188,11 @@ void open_sockets(bool do_recover) {
                             file->value._fd = sockets[i]->_fd;
                             break;
                     }
+                } else if(file->value.type == CONFIG_UnixSocket) {
+                    if(!strcmp(file->value.path, sockets[i]->path)) {
+                            file->value._fd = sockets[i]->_fd;
+                            break;
+                    }
                 }
             }
             if(file->value._fd < 0) {
@@ -120,6 +201,7 @@ void open_sockets(bool do_recover) {
                 } else if(file->value.type == CONFIG_UnixSocket) {
                     file->value._fd = open_unix(&file->value, FALSE);
                 }
+                sockets[cur_sockets++] = &file->value;
             }
         }
     }

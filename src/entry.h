@@ -41,7 +41,7 @@ typedef struct process_entries_s {
     status_t status;
     int bad_attempts;
     double last_start_time;
-    double dead_time;
+    double last_dead_time;
 } process_entries_t;
 
 extern int live_processes;

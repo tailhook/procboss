@@ -96,7 +96,7 @@ void decide_dead(process_entry_t *process, int status) {
         WIFEXITED(status) ? WEXITSTATUS(status) : -1);
     if(stopping) return;
     if(process->dead == DEAD_STOP) return;
-    double delta = process->all->dead_time - process->all->last_start_time;
+    double delta = process->all->last_dead_time - process->start_time;
     if(process->dead == DEAD_RESTART
         || delta >= config.bossd.timeouts.successful_run) {
         process->all->bad_attempts = 0;
@@ -125,9 +125,7 @@ void reap_children() {
             CIRCLEQ_FOREACH(entry, &item->value._entries.entries, cq) {
                 if(entry->pid == pid) {
                     CIRCLEQ_REMOVE(&item->value._entries.entries, entry, cq);
-                    if((item->value._entries.running -= 1) <= 0) {
-                        item->value._entries.dead_time = TVAL2DOUBLE(tm);
-                    }
+                    item->value._entries.last_dead_time = TVAL2DOUBLE(tm);
                     live_processes -= 1;
 
                     decide_dead(entry, status);
@@ -202,6 +200,7 @@ void read_config(int argc, char **argv) {
         item->value._name = item->key;
         item->value._name_len = item->key_len;
         item->value._entries.running = 0;
+        item->value._entries.want_down = 0;
         if(item->value.min_instances > item->value.max_instances) {
             item->value.max_instances = item->value.min_instances;
         }
@@ -282,10 +281,12 @@ void parse_entry(int pid, char *data, int dlen) {
                 abort();
             }
             entry->pid = pid;
-            entry->start_time = boottime + startjif*jiffie;
+            entry->start_time = boottime + (double)startjif/jiffie;
             entry->config = &item->value;
             entry->all = &item->value._entries;
+            entry->dead = DEAD_CRASH;
             CIRCLEQ_INSERT_TAIL(&item->value._entries.entries, entry, cq);
+            item->value._entries.running += 1;
             live_processes += 1;
             return;
         }
@@ -375,7 +376,7 @@ void main_loop() {
                 if(item->value._entries.running
                     >= item->value.min_instances) continue;
                 if(item->value._entries.want_down) continue;
-                double start_time = item->value._entries.dead_time;
+                double start_time = item->value._entries.last_dead_time;
                 if(item->value._entries.bad_attempts
                     > config.bossd.timeouts.retries) {
                     start_time += config.bossd.timeouts.big_restart;
@@ -429,8 +430,15 @@ int main(int argc, char **argv) {
     recover_args = argv;
     read_config(argc, argv);
     fix_environ(argv);
-    init_signals();
     openlogs();
+
+    // This is very early because closes unneeded sockets
+    // Its not very signal safe, but in most cases will inherit signal
+    // mask from previous bossd which exec'd
+    // At the real startup no signals are expected
+    open_sockets(TRUE);
+
+    init_signals();
     boottime = get_boot_time();
     jiffie = sysconf(_SC_CLK_TCK);
     LRECOVER("Starting");
@@ -440,7 +448,6 @@ int main(int argc, char **argv) {
     if(config.bossd.pid_file_len) {
         write_pid(config.bossd.pid_file);
     }
-    open_sockets(TRUE);
     recover_processes();
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         while(item->value._entries.running < item->value.min_instances) {

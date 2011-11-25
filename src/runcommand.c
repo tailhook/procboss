@@ -164,6 +164,7 @@ int do_fork(config_process_t *process) {
         process->_entries.last_start_time = entry->start_time = TVAL2DOUBLE(tm);
         entry->config = process;
         entry->all = &process->_entries;
+        entry->dead = DEAD_CRASH;
         CIRCLEQ_INSERT_TAIL(&process->_entries.entries, entry, cq);
         live_processes += 1;
         LSTARTUP("Started \"%s\" with pid %d", process->_name, res);
