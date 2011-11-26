@@ -90,8 +90,8 @@ void stop_supervisor() {
 }
 
 void decide_dead(process_entry_t *process, int status) {
-    LDEAD("Process \"%s\" with pid %d dead on signal %d or with status %d",
-        process->config->_name, process->pid,
+    LDEAD("Process \"%s\":%d with pid %d dead on signal %d or with status %d",
+        process->config->_name, process->instance_index, process->pid,
         WIFSIGNALED(status) ? WTERMSIG(status) : -1,
         WIFEXITED(status) ? WEXITSTATUS(status) : -1);
     if(stopping) return;
@@ -213,8 +213,9 @@ void parse_entry(int pid, char *data, int dlen) {
     char pname[dlen+1];
     int bosspid;
     int childpid;
-    if(sscanf(data, "%[^,],%d,%[^,],%d",
-        cfgpath, &bosspid, pname, &childpid) != 4) {
+    int instance_index = -1;
+    if(sscanf(data, "%[^,],%d,%[^,],%d,%d",
+        cfgpath, &bosspid, pname, &childpid, &instance_index) < 4) {
         LRECOVER("Unparsable child entry for pid %d", pid);
         return;
     }
@@ -274,7 +275,8 @@ void parse_entry(int pid, char *data, int dlen) {
 
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         if(!strcmp(item->key, pname)) {
-            LRECOVER("Process %d recovered as \"%s\"", pid, pname);
+            LRECOVER("Process %d recovered as \"%s\":%d",
+                pid, pname, instance_index);
             process_entry_t *entry = malloc(sizeof(process_entry_t));
             if(!entry) {
                 LCRITICAL("No memory to recover process entries");
@@ -285,7 +287,20 @@ void parse_entry(int pid, char *data, int dlen) {
             entry->config = &item->value;
             entry->all = &item->value._entries;
             entry->dead = DEAD_CRASH;
-            CIRCLEQ_INSERT_TAIL(&item->value._entries.entries, entry, cq);
+            entry->instance_index = instance_index;
+            process_entry_t *inspoint;
+            int found = FALSE;
+            CIRCLEQ_FOREACH(inspoint, &item->value._entries.entries, cq) {
+                if(inspoint->instance_index > instance_index) {
+                    CIRCLEQ_INSERT_BEFORE(&item->value._entries.entries,
+                        inspoint, entry, cq);
+                    found = TRUE;
+                    break;
+                }
+            }
+            if(!found) {
+                CIRCLEQ_INSERT_TAIL(&item->value._entries.entries, entry, cq);
+            }
             item->value._entries.running += 1;
             live_processes += 1;
             return;

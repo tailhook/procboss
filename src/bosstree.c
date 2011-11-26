@@ -34,6 +34,7 @@ typedef struct bosstree_opt_s {
     int show_pid;
     int show_uptime;
     int show_name;
+    int show_indexes;
     int show_threads;
     int show_rss;
     int show_vsize;
@@ -68,6 +69,7 @@ typedef struct process_info_s {
     int bosspid;
     char *name;
     int mypid;
+    int instance_index;
 
     int ppid;
     int pgid;
@@ -132,7 +134,7 @@ enum color_enum {
 void print_usage(FILE *file) {
     fprintf(file,
         "Usage:\n"
-        "   bosstree [ -acdmpurtoUN ] [-A | -C config.yaml | -P pid]\n"
+        "   bosstree [ -acdmpurtoIUN ] [-A | -C config.yaml | -P pid]\n"
         "\n"
         "Tree selection options:\n"
         "   -A       Show all processes started from any bossd\n"
@@ -150,6 +152,7 @@ void print_usage(FILE *file) {
         "   -t       Show thread number of each process\n"
         "   -U       Don't show uptime of the process\n"
         "   -N       Don't show name of the process\n"
+        "   -i       Show instance index (for multiple instances of process)\n"
         "   -r       Show RSS(Resident Set Size) of each process\n"
         "   -v       Show virtual memory size of each process\n"
         "   -u       Show CPU usage of each process (in monitor mode)\n"
@@ -163,7 +166,7 @@ void print_usage(FILE *file) {
 
 int parse_options(int argc, char **argv, bosstree_opt_t *options) {
     int opt;
-    while((opt = getopt(argc, argv, "AC:P:dcHahpoOm:NrtuUv")) != -1) {
+    while((opt = getopt(argc, argv, "AC:P:dcHahpoOm:NirtuUv")) != -1) {
         switch(opt) {
         case 'A': options->all = TRUE;
             break;
@@ -178,6 +181,7 @@ int parse_options(int argc, char **argv, bosstree_opt_t *options) {
         case 't': options->show_threads = TRUE; break;
         case 'U': options->show_uptime = FALSE; break;
         case 'N': options->show_name = FALSE; break;
+        case 'i': options->show_indexes = TRUE; break;
         case 'r': options->show_rss = TRUE; break;
         case 'v': options->show_vsize = TRUE; break;
         case 'u': options->show_cpu = TRUE; break;
@@ -204,8 +208,9 @@ int parse_child_entry(int pid, char *data, int dlen, process_info_t *info) {
     char pname[dlen+1];
     int bosspid;
     int childpid;
-    if(sscanf(data, "%[^,],%d,%[^,],%d",
-        cfgpath, &bosspid, pname, &childpid) != 4) {
+    int inst = -1;
+    if(sscanf(data, "%[^,],%d,%[^,],%d,%d",
+        cfgpath, &bosspid, pname, &childpid, &inst) < 4) {
         return FALSE;
     }
     if(!info->bossconfig) {
@@ -214,6 +219,7 @@ int parse_child_entry(int pid, char *data, int dlen, process_info_t *info) {
     info->bosspid = bosspid;
     info->name = strdup(pname);
     info->mypid = childpid;
+    info->instance_index = inst;
     if(info->pid == info->mypid) {
         info->kind = DETACHED;
     } else {
@@ -367,6 +373,9 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     if(options->show_name) {
         COMMA;
         printf("%s", child->name);
+        if(child->instance_index >= 0 && options->show_indexes) {
+            printf(":%d", child->instance_index);
+        }
     }
     if(options->show_pid) {
         COMMA;
@@ -648,6 +657,7 @@ int main(int argc, char **argv) {
         show_threads: FALSE,
         show_uptime: TRUE,
         show_name: TRUE,
+        show_indexes: FALSE,
         show_rss: FALSE,
         show_vsize: FALSE,
         show_cpu: FALSE,

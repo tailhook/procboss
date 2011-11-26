@@ -71,7 +71,8 @@ void startin_proc(char *term, int nproc, config_process_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
         if(processes[i]->_entries.running < processes[i]->max_instances) {
             int parentpid = getpid();
-            int pid = do_fork(processes[i]);
+            int idx;
+            int pid = do_fork(processes[i], &idx);
             if(!pid) {
                 int fd = open(term, O_RDWR);
                 CHECK(fd, "Can't open terminal");
@@ -82,7 +83,7 @@ void startin_proc(char *term, int nproc, config_process_t *processes[]) {
                 if(ioctl(fd, TIOCSCTTY, 0) < 0)
                     logstd(LOG_STARTUP, "Can't attach terminal");
                 if(fd != 0 && fd != 1 && fd != 2) close(fd);
-                do_run(processes[i], parentpid);
+                do_run(processes[i], parentpid, idx);
             }
         }
     }

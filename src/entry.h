@@ -29,6 +29,7 @@ typedef struct process_entry_s {
     CIRCLEQ_ENTRY(process_entry_s) cq;
     pid_t pid;
     dead_status_t dead;
+    int instance_index;
     double start_time;
     struct config_process_s *config;
     struct process_entries_s *all;

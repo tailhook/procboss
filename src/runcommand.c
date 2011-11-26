@@ -147,9 +147,26 @@ static void drop_privileges(config_process_t *process) {
 }
 
 
-int do_fork(config_process_t *process) {
+int do_fork(config_process_t *process, int *instance_index) {
     process_entry_t *entry = malloc(sizeof(process_entry_t));
     if(!entry) return -1;
+
+    int idx = 0;
+    process_entry_t *inspoint;
+    int found = FALSE;
+    CIRCLEQ_FOREACH(inspoint, &process->_entries.entries, cq) {
+        if(inspoint->instance_index > idx) {
+            found = TRUE;
+            break;
+        } else {
+            idx = inspoint->instance_index+1;
+        }
+    }
+    if(!found) {
+        inspoint = NULL;
+    }
+    *instance_index = idx;
+
     int res = fork();
     if(res < 0) {
         free(entry);
@@ -165,15 +182,21 @@ int do_fork(config_process_t *process) {
         entry->config = process;
         entry->all = &process->_entries;
         entry->dead = DEAD_CRASH;
-        CIRCLEQ_INSERT_TAIL(&process->_entries.entries, entry, cq);
+        entry->instance_index = idx;
+        if(inspoint) {
+            CIRCLEQ_INSERT_BEFORE(&process->_entries.entries,
+                inspoint, entry, cq);
+        } else {
+            CIRCLEQ_INSERT_TAIL(&process->_entries.entries, entry, cq);
+        }
         live_processes += 1;
-        LSTARTUP("Started \"%s\" with pid %d", process->_name, res);
+        LSTARTUP("Started \"%s\":%d with pid %d", process->_name, idx, res);
         return res; // We are parent, just return pid
     }
     return res;
 }
 
-void do_run(config_process_t *process, int parentpid) {
+void do_run(config_process_t *process, int parentpid, int instance_index) {
     int i;
     sigset_t mask;
     sigfillset(&mask);
@@ -200,8 +223,9 @@ void do_run(config_process_t *process, int parentpid) {
     char *environ[process->environ_len+2];
     char **tmpenv = environ;
     char bossenv[process->_name_len + configuration_name_len + 64];
-    sprintf(bossenv, "BOSS_CHILD=%s,%d,%s,%d",
-        configuration_name, parentpid, process->_name, getpid());
+    sprintf(bossenv, "BOSS_CHILD=%s,%d,%s,%d,%d",
+        configuration_name, parentpid,
+        process->_name, getpid(), instance_index);
     *tmpenv++ = bossenv;
 
     CONFIG_STRING_STRING_LOOP(item, process->environ) {
@@ -219,10 +243,11 @@ void do_run(config_process_t *process, int parentpid) {
 
 int fork_and_run(config_process_t *process) {
     int parentpid = getpid();
-    int pid = do_fork(process);
+    int index;
+    int pid = do_fork(process, &index);
     if(pid < 0) return pid;
     if(!pid) {
-        do_run(process, parentpid);
+        do_run(process, parentpid, index);
     }
     return pid;
 }
