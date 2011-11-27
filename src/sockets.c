@@ -197,9 +197,9 @@ void open_sockets(bool do_recover) {
             }
             if(file->value._fd < 0) {
                 if(file->value.type == CONFIG_Tcp) {
-                    file->value._fd = open_tcp(&file->value, FALSE);
+                    file->value._fd = open_tcp(&file->value, TRUE);
                 } else if(file->value.type == CONFIG_UnixSocket) {
-                    file->value._fd = open_unix(&file->value, FALSE);
+                    file->value._fd = open_unix(&file->value, TRUE);
                 }
                 sockets[cur_sockets++] = &file->value;
             }

@@ -65,16 +65,12 @@ static void open_files(config_process_t *process) {
         if(item->value.type == CONFIG_Tcp) {
             if(item->value._fd >= 0) {
                 tfd = item->value._fd;
-                //CHECK(listen(tfd, SOMAXCONN),
-                //    "Can't listen on opened fd");
             } else {
                 tfd = open_tcp(&item->value, TRUE);
             }
         } else if(item->value.type == CONFIG_UnixSocket) {
             if(item->value._fd >= 0) {
                 tfd = item->value._fd;
-                //CHECK(listen(tfd, SOMAXCONN),
-                //    "Can't listen on opened fd");
             } else {
                 tfd = open_unix(&item->value, TRUE);
             }

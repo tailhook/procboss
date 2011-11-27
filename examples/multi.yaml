@@ -27,7 +27,6 @@ Processes:
         from itertools import count
 
         sock = socket.fromfd(3, socket.AF_INET, socket.SOCK_STREAM)
-        sock.listen(1)
         oldtot = tot = 0
         while True:
           cli, addr = sock.accept()
