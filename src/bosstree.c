@@ -565,7 +565,7 @@ void sort_processes(process_info_t *tbl, int num) {
             TAILQ_INIT(&entry->running);
             for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
                 child; child=TAILQ_NEXT(child, chentry)) {
-                if(strcmp(child->name, item->key))
+                if(child->name && strcmp(child->name, item->key))
                     continue;
                 TAILQ_INSERT_TAIL(&entry->running, child, runentry);
                 entry->status = S_NORMAL;
