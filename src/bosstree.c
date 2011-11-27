@@ -672,8 +672,8 @@ int main(int argc, char **argv) {
     int num;
     if(options.monitor) {
         struct timespec tm = {
-            tv_sec: (int)options.monitor,
-            tv_nsec: (int)(1000000000*options.monitor) % 1000000000
+            tv_sec: (long)options.monitor,
+            tv_nsec: (long)(1000000000*options.monitor) % 1000000000
             };
         if(options.color) {
             printf("\033[1J");
