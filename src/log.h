@@ -7,6 +7,7 @@
 #define LCRASH(...) logmsg(LOG_CRASH, ##__VA_ARGS__);
 #define LCRITICAL(...) logmsg(LOG_CRITICAL, ##__VA_ARGS__);
 #define LRECOVER(...) logmsg(LOG_RECOVER, ##__VA_ARGS__);
+#define LCONTROL(...) logmsg(LOG_CONTROL, ##__VA_ARGS__);
 #define LWARNING(...) logmsg(LOG_WARNING, ##__VA_ARGS__);
 #define STDWARN(...) logstd(LOG_WARNING, ##__VA_ARGS__);
 #define LDEAD(...) logmsg(LOG_DEAD, ##__VA_ARGS__);
@@ -20,6 +21,7 @@ typedef enum {
     LOG_CRASH,
     LOG_CRITICAL,
     LOG_RECOVER,
+    LOG_CONTROL,
     LOG_WARNING,
     LOG_DEAD,
     LOG_STARTUP,

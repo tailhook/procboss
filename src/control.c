@@ -11,6 +11,7 @@
 #include "control.h"
 #include "constants.h"
 #include "globalstate.h"
+#include "log.h"
 
 
 int control_fd = -1;
@@ -100,8 +101,7 @@ void run_groupman(command_def_t *cmd, int argc, char *argv[], int skip) {
         case 'e': pattern = TRUE; break;
         case 'E': pattern = FALSE; break;
         default:
-            fprintf(stderr, "Wrong argument\n");
-            fflush(stderr);
+            LCONTROL("Wrong argument\n");
             return;
         }
     }
@@ -160,8 +160,10 @@ void run_groupman(command_def_t *cmd, int argc, char *argv[], int skip) {
         CONTINUE: continue;
     }
     if(nproc == MAX_PROCESSES) {
-        fprintf(stderr, "Maximum processes reached\n");
-        fflush(stderr);
+        LCONTROL("Maximum processes reached\n");
+        return;
+    } else if(nproc == 0) {
+        LCONTROL("No processes matched\n");
         return;
     }
     switch(skip) {
@@ -200,8 +202,7 @@ void run_instman(command_def_t *cmd, int argc, char *argv[], int skip) {
         case 'e': pattern = TRUE; break;
         case 'E': pattern = FALSE; break;
         default:
-            fprintf(stderr, "Wrong argument\n");
-            fflush(stderr);
+            LCONTROL("Wrong argument\n");
             return;
         }
     }
@@ -270,8 +271,10 @@ void run_instman(command_def_t *cmd, int argc, char *argv[], int skip) {
         CONTINUE: continue;
     }
     if(nproc == MAX_PROCESSES) {
-        fprintf(stderr, "Maximum processes reached\n");
-        fflush(stderr);
+        LCONTROL("Maximum processes reached\n");
+        return;
+    } else if(nproc == 0) {
+        LCONTROL("No processes matched\n");
         return;
     }
     switch(skip) {
@@ -290,6 +293,8 @@ void parse_spaces(char *data, int len, command_def_t *cmdtable) {
     char *argv[MAX_ARGS];
     int argc = 0;
 
+    LCONTROL("Got command ``%.*s''", len, data);
+
     char *end = data + len;
     while(data < end) {
         while(data < end && isspace(*data)) ++data;
@@ -300,8 +305,7 @@ void parse_spaces(char *data, int len, command_def_t *cmdtable) {
         argv[argc++] = cmd;
     }
     if(!argc) {
-        fprintf(stderr, "Wrong command\n");
-        fflush(stderr);
+        LCONTROL("Wrong command\n");
         return;
     }
     argv[argc] = NULL;
@@ -323,8 +327,7 @@ void parse_spaces(char *data, int len, command_def_t *cmdtable) {
                 return;
             case CMD_NOARG:
                 if(argc != 1) {
-                    fprintf(stderr, "Extra arguments\n");
-                    fflush(stderr);
+                    LCONTROL("Extra arguments\n");
                     return;
                 }
                 def->fun.noarg();
@@ -334,8 +337,7 @@ void parse_spaces(char *data, int len, command_def_t *cmdtable) {
             }
         }
     }
-    fprintf(stderr, "Wrong command ``%s''\n", argv[0]);
-    fflush(stderr);
+    LCONTROL("Wrong command ``%s''\n", argv[0]);
     return;
 }
 

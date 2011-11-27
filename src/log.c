@@ -13,10 +13,11 @@
 #include <string.h>
 #include <errno.h>
 
-const char *levels[] = {
+const char *levels[] = {  // PLEASE keep in sync with loglevel_t
     "CRASH",  // for crashes of boss itself
     "CRITICAL",  // boss can't operate normally
     "RECOVER",  // recovering processes after inplace restart
+    "CONTROL",  // commands throught control interface
     "WARNING",  // various warnings
     "DEATH",  // death of a child (which is not a big deal)
     "STARTUP",  // start of a new child
