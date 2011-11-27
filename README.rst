@@ -27,3 +27,15 @@ Will never happen:
 * Networking
 * Other bloat
 
+Bugs:
+
+We currently use environment variables for all the process tracking, which
+have the following implications:
+
+* it doesn't work for some programs trying to mangle own environment like
+  nginx (althrought nginx has it's own supervisor)
+* it's not totally secure, any bossd child can imitate other child, by modifing
+  environment, blocking that one to restart in case of crash (this
+  vulnerability is tradeoff of being very robust, and it's quite hard to
+  exploit for our setup, but you have been warned!)
+
