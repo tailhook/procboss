@@ -14,12 +14,11 @@ Features:
 * User-friendly and featureful configuration in yaml
 * Bash and Zsh completion for remote control utilities
 * Logging of process deaths and restarts
-
-To Do:
-
-* Running multiple similar processes (like in fastcgi), optionally keeping
-  some shared file descriptor open
-* Configuration reloading (partially works, by restarting in-place)
+* Running multiple similar processes, optionally keeping some shared file
+  descriptor open. Dynamically adding processed.
+* In case it's not clear from above, can act as spawn-fcgi
+* Tagging processed for easier managing, like restart all processes of some
+  project
 
 Will never happen:
 
