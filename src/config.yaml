@@ -74,7 +74,7 @@ __types__:
     enable-subst: !Bool
       default: yes
       descripton: >
-        Enable substitution of $(variables) inside arguments. Two implemented
+        Enable substitution of @(variables) inside arguments. Two implemented
         so far are `seq0` and `seq1` are 0- and 1-based index of process among
         instances of the same process. It's minimal number of the process, with
         guaranty that no duplicates are simultaneously running. But in case of

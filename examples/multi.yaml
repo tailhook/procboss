@@ -30,7 +30,7 @@ Processes:
         oldtot = tot = 0
         while True:
           cli, addr = sock.accept()
-          cli.send(str(os.getpid()).encode('ascii'))
+          cli.send('{}-@(seq0)'.format(os.getpid()).encode('ascii'))
           cli.close()
     files:
       3: !Tcp

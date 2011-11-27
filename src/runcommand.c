@@ -196,6 +196,44 @@ int do_fork(config_process_t *process, int *instance_index) {
     return res;
 }
 
+// very primitive substitution function
+static char *substitute(char *str, int val) {
+    char seq0[11];
+    char seq1[11];
+    sprintf(seq0, "%d", val);
+    sprintf(seq1, "%d", val+1);
+
+    int curlen = strlen(str)+1;
+    char *output = malloc(curlen);
+    char *p = output;
+    for(char *c = str; *c; ++c) {
+        if(*c == '@') {
+            char *value;
+            int strip;
+            if(!strncmp(c, "@(seq0)", 7)) {
+                value = seq0;
+                strip = 7;
+            } else if(!strncmp(c, "@(seq1)", 7)) {
+                value = seq1;
+                strip = 7;
+            } else {
+                *p = *c;
+                continue;
+            }
+            char *no = realloc(output, curlen-strip+strlen(seq0));
+            p = no + (p - output);
+            output = no;
+            strcpy(p, value);
+            p += strlen(value);
+            c += strip-1;
+        } else {
+            *p++ = *c;
+        }
+    }
+    *p = 0;
+    return output;
+}
+
 void do_run(config_process_t *process, int parentpid, int instance_index) {
     int i;
     sigset_t mask;
@@ -216,7 +254,11 @@ void do_run(config_process_t *process, int parentpid, int instance_index) {
     char *argv[process->arguments_len+1];
     i = 0;
     CONFIG_STRING_LOOP(item, process->arguments) {
-        argv[i++] = item->value;
+        if(process->enable_subst) {
+            argv[i++] = substitute(item->value, instance_index);
+        } else {
+            argv[i++] = item->value;
+        }
     }
     argv[i] = NULL;
 
