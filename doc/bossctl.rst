@@ -134,6 +134,11 @@ explode
     do in-place restart of bossd and recover child process' info (useful for
     configuration reloading and updating of bossd binary)
 
+reload
+
+    currently mapped to ``explode``, will probably be implemented in future as
+    as a more pretty way to reload configuration
+
 reopenlog
 
     reopen log files, in case some external tool removed or rotated it
