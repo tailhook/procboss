@@ -1,0 +1,5 @@
+user: root
+executable-path: /usr/sbin/collectd
+arguments:
+- collectd
+- -f  # foreground
