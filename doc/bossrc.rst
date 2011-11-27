@@ -44,11 +44,17 @@ start *PROCESS1* *PROCESS2*...
     starts processes, even if they are were marked as stopped
 
 sigterm *PROCESS1* *PROCESS2*...
+
 sighup *PROCESS1* *PROCESS2*...
+
 sigkill *PROCESS1* *PROCESS2*...
+
 sigusr1 *PROCESS1* *PROCESS2*...
+
 sigusr2 *PROCESS1* *PROCESS2*...
+
 sigint *PROCESS1* *PROCESS2*...
+
 sigquit *PROCESS1* *PROCESS2*...
 
     sends respective signal to a process (that will probably die, and
@@ -58,6 +64,36 @@ sig *NUM* *PROCESS1* *PROCESS2*...
 
     sends a signal by a number (useful to send signals having to separate
     command, like SIGSEGV)
+
+norestart *NUM* *PROCESS1* *PROCESS2*...
+
+    marks process (instance) to not to restart if it crashed. Useful with
+    ``-p`` flag and subsequent call to ``sig*`` commands to stop exactly
+    specified instance of process instead of using ``decr`` and ``min`` (see
+    below)
+
+Instance Manipulation Commands
+------------------------------
+
+incr *PROCESS1* *PROCESS2*...
+
+    increment number of instances for each of the processes
+
+decr *PROCESS1* *PROCESS2*...
+
+    decrement number of instances for each of the processes. Kills ones having
+    biggest instance number first. Kills with ``spare-kill-signal`` from
+    configuration (SIGTERM by default)
+
+max *PROCESS1* *PROCESS2*...
+
+    start maximum allowed number of instances for each process
+
+min  *PROCESS1* *PROCESS2*...
+
+    kill some instances of the process, until minimum number left. Kills ones
+    having biggest instance number first. Kills with ``spare-kill-signal`` from
+    configuration (SIGTERM by default)
 
 Process Matching
 ----------------

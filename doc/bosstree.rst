@@ -13,7 +13,7 @@ boss-controled processes viewer
 Synopsis
 --------
 
-| bosstree [ -acdmpurtoHUN ] [-A | -C config.yaml | -P pid]
+| bosstree [ -acdimpurtoHUN ] [-A | -C config.yaml | -P pid]
 
 Description
 -----------
@@ -43,6 +43,7 @@ Display options:
    -t       Show thread number of each process
    -U       Don't show uptime of the process
    -N       Don't show name of the process
+   -i       Show instance number of the process
    -r       Show RSS(Resident Set Size) of each process
    -v       Show virtual memory size of each process
    -u       Show CPU usage of each process (in monitor mode)
