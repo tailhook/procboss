@@ -88,6 +88,11 @@ int check_command(char **argv, int argc, command_def_t *completion_commands) {
                 if(!len || !strncmp(argv[argc-1], item->key, len)) {
                     printf("%s\n", item->key);
                 }
+                CONFIG_STRING_LOOP(tag, item->value.tags) {
+                    if(!len || !strncmp(argv[argc-1], tag->value, len)) {
+                        printf("%s\n", tag->value);
+                    }
+                }
             }
         }
         return 1;
@@ -135,6 +140,11 @@ int check_command(char **argv, int argc, command_def_t *completion_commands) {
                         }
                     }
                     printf("\n");
+                }
+                CONFIG_STRING_LOOP(tag, item->value.tags) {
+                    if(!len || !strncmp(argv[argc-1], tag->value, len)) {
+                        printf("%s tagged processes\n", tag->value);
+                    }
                 }
             }
         }

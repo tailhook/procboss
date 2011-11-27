@@ -101,15 +101,17 @@ Process Matching
 By default you specify exact process names as specified in configuration
 file. All process control commands support following options:
 
-  -a -A    match (no match) command arguments
+-a -A    match (no match) command arguments
 
-  -b -B    match (no match) executable path
+-b -B    match (no match) executable path
 
-  -p -P    match (no match) pid of running processes
+-p -P    match (no match) pid of running processes
 
-  -n -N    match (no match) configured process name (on by default)
+-n -N    match (no match) configured process name (on by default)
 
-  -e -E    match by fnmatch pattern (exact match)
+-t,-T    match (no match) process tags (on by default)
+
+-e -E    match by fnmatch pattern (exact match)
 
 Bossrun Global Commands
 -----------------------

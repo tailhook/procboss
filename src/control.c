@@ -84,7 +84,8 @@ void run_groupman(command_def_t *cmd, int argc, char *argv[], int skip) {
     int match_binary = FALSE;
     int match_name = TRUE;
     int match_pid = FALSE;
-    while((opt = getopt(argc, argv, "+aAbBpPnNeE")) != -1) {
+    int match_tag = TRUE;
+    while((opt = getopt(argc, argv, "+aAbBpPnNtTeE")) != -1) {
         switch(opt) {
         case 'a': match_args = TRUE; break;
         case 'A': match_args = FALSE; break;
@@ -94,6 +95,8 @@ void run_groupman(command_def_t *cmd, int argc, char *argv[], int skip) {
         case 'P': match_pid = FALSE; break;
         case 'n': match_name = TRUE; break;
         case 'N': match_name = FALSE; break;
+        case 't': match_tag = TRUE; break;
+        case 'T': match_tag = FALSE; break;
         case 'e': pattern = TRUE; break;
         case 'E': pattern = FALSE; break;
         default:
@@ -112,6 +115,14 @@ void run_groupman(command_def_t *cmd, int argc, char *argv[], int skip) {
             if(match(item->key, argc-optind, argv+optind, pattern)) {
                 processes[nproc++] = &item->value;
                 continue;
+            }
+        }
+        if(match_tag) {
+            CONFIG_STRING_LOOP(arg, item->value.tags) {
+                if(match(arg->value, argc-optind, argv+optind, pattern)) {
+                    processes[nproc++] = &item->value;
+                    goto CONTINUE;
+                }
             }
         }
         if(match_binary) {
@@ -172,8 +183,9 @@ void run_instman(command_def_t *cmd, int argc, char *argv[], int skip) {
     int match_args = FALSE;
     int match_binary = FALSE;
     int match_name = TRUE;
+    int match_tag = TRUE;
     int match_pid = FALSE;
-    while((opt = getopt(argc, argv, "+aAbBpPnNeE")) != -1) {
+    while((opt = getopt(argc, argv, "+aAbBpPnNtTeE")) != -1) {
         switch(opt) {
         case 'a': match_args = TRUE; break;
         case 'A': match_args = FALSE; break;
@@ -182,6 +194,8 @@ void run_instman(command_def_t *cmd, int argc, char *argv[], int skip) {
         case 'p': match_pid = TRUE; break;
         case 'P': match_pid = FALSE; break;
         case 'n': match_name = TRUE; break;
+        case 't': match_tag = TRUE; break;
+        case 'T': match_tag = FALSE; break;
         case 'N': match_name = FALSE; break;
         case 'e': pattern = TRUE; break;
         case 'E': pattern = FALSE; break;
@@ -204,6 +218,17 @@ void run_instman(command_def_t *cmd, int argc, char *argv[], int skip) {
                     processes[nproc++] = tmpproc;
                 }
                 continue;
+            }
+        }
+        if(match_tag) {
+            CONFIG_STRING_LOOP(arg, item->value.tags) {
+                if(match(arg->value, argc-optind, argv+optind, pattern)) {
+                    CIRCLEQ_FOREACH(tmpproc, &item->value._entries.entries, cq)
+                    {
+                        processes[nproc++] = tmpproc;
+                    }
+                    goto CONTINUE;
+                }
             }
         }
         if(match_binary) {

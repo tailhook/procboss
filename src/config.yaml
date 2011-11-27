@@ -50,6 +50,9 @@ __types__:
       default: -1
 
   process:
+    tags: !Array
+      element: !String
+      description: hello
     min-instances: !Int
       default: 1
       min: 1

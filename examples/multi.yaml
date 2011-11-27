@@ -14,6 +14,7 @@ bossd:
 
 Processes:
   server:
+    tags: [serv, all]
     min-instances: 3
     max-instances: 10
     executable-path: /usr/bin/python
@@ -39,6 +40,7 @@ Processes:
     user: nobody
     group: nobody
   sleeper:
+    tags: [all]
     executable-path: /bin/sleep
     arguments: [sleep, 1000000]
 

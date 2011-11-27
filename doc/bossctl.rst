@@ -120,6 +120,8 @@ file. All process control commands support following options:
 
 -n,-N    match (no match) configured process name (on by default)
 
+-t,-T    match (no match) process tags (on by default)
+
 -e,-E    match by fnmatch pattern (exact match)
 
 Bossd Global Commands
