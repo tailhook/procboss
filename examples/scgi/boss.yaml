@@ -1,0 +1,27 @@
+
+Processes:
+  python:
+    user: nobody  # in case you run bossd as root
+    min-instances: 3  # just to show you how this is useful
+    max-instances: 10
+    executable-path: /usr/bin/python
+    arguments:
+    - python
+    - hello.py
+    files:
+      # we need to open file descriptor here and pass it to application because
+      # we want to run multiple workers, otherwise we would need to reimplement
+      # forking and supervising in our application
+      0: !Tcp           # 0's file descriptor is convention for fastcgi
+        host: 127.0.0.1 # we reuse convention for scgi
+        port: 8001
+  lighttpd:
+    user: nobody  # in case you run bossd as root
+    executable-path: /usr/sbin/lighttpd
+    arguments:
+    - lighttpd
+    - -f  # configuration file follows
+    - lighttpd.conf
+    - -D  # do not fork into background
+
+
