@@ -204,11 +204,11 @@ void fix_environ(char **argv) {
 int main(int argc, char **argv) {
     read_config(argc, argv);
     fix_environ(argv);
+    open_sockets(FALSE);
     init_signals();
     if(config.bossrun.fifo_len) {
         init_control(config.bossrun.fifo);
     }
-    open_sockets(FALSE);
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         item->value._name = item->key;
         item->value._name_len = item->key_len;
