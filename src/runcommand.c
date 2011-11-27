@@ -175,7 +175,6 @@ int do_fork(config_process_t *process, int *instance_index) {
     if(res > 0) {
         struct timeval tm;
         gettimeofday(&tm, NULL);
-        process->_entries.status = PROC_STARTING;
         process->_entries.running += 1;
         entry->pid = res;
         process->_entries.last_start_time = entry->start_time = TVAL2DOUBLE(tm);

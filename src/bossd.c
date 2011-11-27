@@ -125,6 +125,7 @@ void reap_children() {
             CIRCLEQ_FOREACH(entry, &item->value._entries.entries, cq) {
                 if(entry->pid == pid) {
                     CIRCLEQ_REMOVE(&item->value._entries.entries, entry, cq);
+                    item->value._entries.running -= 1;
                     item->value._entries.last_dead_time = TVAL2DOUBLE(tm);
                     live_processes -= 1;
 

@@ -67,6 +67,59 @@ void start_processes(int nproc, config_process_t *processes[]) {
     }
 }
 
+void incr_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(processes[i]->_entries.running < processes[i]->max_instances) {
+            fork_and_run(processes[i]);
+        }
+    }
+}
+
+void max_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        while(processes[i]->_entries.running < processes[i]->max_instances) {
+            fork_and_run(processes[i]);
+        }
+    }
+}
+
+void decr_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        if(processes[i]->_entries.running <= processes[i]->min_instances)
+            continue;
+
+        process_entry_t *entry;
+        CIRCLEQ_FOREACH_REVERSE(entry, &processes[i]->_entries.entries, cq) {
+            entry->dead = DEAD_STOP;
+            kill(entry->pid, processes[i]->spare_kill_signal);
+            break;
+        }
+    }
+}
+
+void min_processes(int nproc, config_process_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        int to_kill;
+        to_kill = processes[i]->_entries.running - processes[i]->min_instances;
+        if(to_kill <= 0) continue;
+
+        process_entry_t *entry;
+        CIRCLEQ_FOREACH_REVERSE(entry, &processes[i]->_entries.entries, cq) {
+            entry->dead = DEAD_STOP;
+            kill(entry->pid, processes[i]->spare_kill_signal);
+            if(-- to_kill <= 0) {
+                break;
+            }
+        }
+    }
+}
+
+void norestart_processes(int nproc, process_entry_t *processes[]) {
+    for(int i = 0; i < nproc; ++i) {
+        processes[i]->dead = DEAD_STOP;
+    }
+}
+
 void startin_proc(char *term, int nproc, config_process_t *processes[]) {
     for(int i = 0; i < nproc; ++i) {
         if(processes[i]->_entries.running < processes[i]->max_instances) {

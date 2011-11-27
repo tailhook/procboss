@@ -10,16 +10,6 @@
 #define TVAL2DOUBLE(tval) ((double)(tval).tv_sec + 0.000001*(tval).tv_usec)
 
 typedef enum {
-    PROC_NEW,
-    PROC_STARTING,
-    PROC_ALIVE,
-    PROC_STOPPING,
-    PROC_DEAD,
-    PROC_STOPPED,
-    PROC_ERROR
-} status_t;
-
-typedef enum {
     DEAD_CRASH,
     DEAD_STOP,
     DEAD_RESTART
@@ -39,7 +29,6 @@ typedef struct process_entries_s {
     CIRCLEQ_HEAD(process_entries_head_s, process_entry_s) entries;
     int running;
     int want_down;
-    status_t status;
     int bad_attempts;
     double last_start_time;
     double last_dead_time;
