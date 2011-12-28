@@ -44,7 +44,8 @@ void run_shell(int fifofd) {
 }
 
 int main(int argc, char *argv[]) {
-    parse_config(&config, argc, argv);
+    char *config_filename;
+    parse_config(&config, argc, argv, &config_filename);
     if(!config.bossrun.fifo_len) {
         fprintf(stderr, "No fifo");
         return 1;
@@ -79,6 +80,14 @@ int main(int argc, char *argv[]) {
     }
 
     close(fd);
+
+    if(config.bossctl.show_tree) {
+        execlp("bosstree", "bosstree",
+            config.bossctl.bosstree_options,
+            "-c", config_filename,
+            NULL);
+    }
+
     config_free(&config);
     return 0;
 }

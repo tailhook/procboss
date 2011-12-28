@@ -27,6 +27,11 @@ Options
   -c CONFIG_FILE
     configuration file. Default is /etc/bossd.yaml
 
+  -T
+    run bosstree after running command, note bosstree will be run continuously,
+    so you must stop it yourself, e.g. with Ctrl+C
+
+
 Process Control Commands
 ------------------------
 

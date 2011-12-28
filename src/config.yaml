@@ -198,6 +198,32 @@ bossrun:
       description: >
         Stop all processes when SIGHUP received
 
+bossctl:
+  show-tree: !Bool
+    default: no
+    description: Show tree of processes after commands are sent
+    command-line-enable: -T
+    command-line-distable: -t
+  bosstree-options: !String
+    default: -dpum1
+    description: Options to run bossctl with, usually you want at least `-m1`
+  show-tail: !Bool
+    default: no
+    description: Tail supervisor's logfile after commands are sent
+    command-line-enable: -L
+    command-line-distable: -l
+  tail-options: !String
+    default: -F
+    description: >
+      Tail options to start after commands, you usually want `-F`,
+      but sometimes `-f` if you have some strange tail command, or `+F` for
+      less
+  tail-command: !String
+    default: tail
+    description: >
+      Tail command to run after bossctl, usually you want `tail`,
+      but you may want `less` or something else
+
 bossd:
   fifo: !File
     default: "/var/run/boss/fifo"

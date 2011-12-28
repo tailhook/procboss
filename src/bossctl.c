@@ -55,7 +55,8 @@ void run_shell(int fifofd) {
     }
 }
 int main(int argc, char *argv[]) {
-    parse_config(&config, argc, argv);
+    char *config_filename = NULL;
+    parse_config(&config, argc, argv, &config_filename);
 
     if(check_command(argv + optind, argc - optind, bossd_cmd_table)) {
         return 0;
@@ -116,6 +117,21 @@ int main(int argc, char *argv[]) {
     }
 
     close(fd);
+
+    if(config.bossctl.show_tree) {
+        execlp("bosstree", "bosstree",
+            config.bossctl.bosstree_options,
+            "-c", config_filename,
+            NULL);
+    } else if(config.bossctl.show_tail) {
+        execlp(
+            config.bossctl.tail_command,
+            config.bossctl.tail_command,
+            config.bossctl.tail_options,
+            config.bossd.logging.file,
+            NULL);
+    }
+
     config_free(&config);
     return 0;
 }

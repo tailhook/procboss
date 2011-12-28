@@ -156,7 +156,7 @@ int check_command(char **argv, int argc, command_def_t *completion_commands) {
     return 0;
 }
 
-void parse_config(config_main_t *cfg, int argc, char **argv) {
+void parse_config(config_main_t *cfg, int argc, char **argv, char **filename) {
     coyaml_context_t ctx;
     if(config_context(&ctx, cfg) < 0) {
         perror(argv[0]);
@@ -184,5 +184,8 @@ void parse_config(config_main_t *cfg, int argc, char **argv) {
     coyaml_readfile_or_exit(&ctx);
     coyaml_env_parse_or_exit(&ctx);
     coyaml_cli_parse_or_exit(&ctx, argc, argv);
+    if(filename) {
+        *filename = realpath(ctx.root_filename, NULL);
+    }
     coyaml_context_free(&ctx);
 }
