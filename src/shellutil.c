@@ -1,4 +1,7 @@
 #include <ctype.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <unistd.h>
 
 #include "shellutil.h"
 #include "linenoise.h"
@@ -151,4 +154,35 @@ int check_command(char **argv, int argc, command_def_t *completion_commands) {
         return 1;
     }
     return 0;
+}
+
+void parse_config(config_main_t *cfg, int argc, char **argv) {
+    coyaml_context_t ctx;
+    if(config_context(&ctx, cfg) < 0) {
+        perror(argv[0]);
+        exit(1);
+    }
+    // sorry, fixing shortcommings of coyaml
+    ctx.cmdline->full_description = "";
+    if(coyaml_cli_prepare(&ctx, argc, argv)) {
+        if(errno == ECOYAML_CLI_HELP) {
+            char *fname = strrchr(argv[0], '/');
+            if(!fname) {
+                fname = argv[0];
+            } else {
+                fname += 1;
+            }
+            execlp("man", "man", fname, NULL);
+        }
+        if(errno > ECOYAML_MAX || errno < ECOYAML_MIN) {
+            perror(argv[0]);
+        }
+        config_free(cfg);
+        coyaml_context_free(&ctx);
+        exit(1);
+    }
+    coyaml_readfile_or_exit(&ctx);
+    coyaml_env_parse_or_exit(&ctx);
+    coyaml_cli_parse_or_exit(&ctx, argc, argv);
+    coyaml_context_free(&ctx);
 }

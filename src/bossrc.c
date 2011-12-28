@@ -44,7 +44,7 @@ void run_shell(int fifofd) {
 }
 
 int main(int argc, char *argv[]) {
-    config_load(&config, argc, argv);
+    parse_config(&config, argc, argv);
     if(!config.bossrun.fifo_len) {
         fprintf(stderr, "No fifo");
         return 1;

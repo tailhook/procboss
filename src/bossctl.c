@@ -8,6 +8,7 @@
 #include <sys/uio.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <errno.h>
 
 #include "linenoise.h"
 #include "config.h"
@@ -53,9 +54,8 @@ void run_shell(int fifofd) {
         free(line);
     }
 }
-
 int main(int argc, char *argv[]) {
-    config_load(&config, argc, argv);
+    parse_config(&config, argc, argv);
 
     if(check_command(argv + optind, argc - optind, bossd_cmd_table)) {
         return 0;

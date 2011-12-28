@@ -5,5 +5,6 @@
 
 void init_completion(command_def_t *tbl);
 int check_command(char **argv, int argc, command_def_t *completion_commands);
+void parse_config(config_main_t *cfg, int argc, char **argv);
 
 #endif // _H_SHELLUTIL
