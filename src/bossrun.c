@@ -29,6 +29,14 @@ char *configuration_name = "bossrun";
 int configuration_name_len = 7; // strlen("bossrun");
 extern char **environ;
 
+char *config_filenames[] = {
+    "./bossrun.yaml",
+    "./boss.yaml",
+    "./config/bossrun.yaml",
+    "./config/boss.yaml",
+    NULL
+    };
+
 void init_signals() {
     sigset_t mask;
     sigemptyset(&mask);
@@ -158,6 +166,16 @@ void read_config(int argc, char **argv) {
         perror(argv[0]);
         exit(1);
     }
+
+    if(!getenv("BOSS_CONFIG")) {
+        for(char **fn = &config_filenames[0]; *fn; ++fn) {
+            if(!access(*fn, F_OK)) {
+                ctx.root_filename = *fn;
+                break;
+            }
+        }
+    }
+
     // sorry, fixing shortcommings of coyaml
     ctx.cmdline->full_description = "";
     if(coyaml_cli_prepare(&ctx, argc, argv)) {

@@ -25,7 +25,9 @@ Options
 -------
 
   -c CONFIG_FILE
-    configuration file. Default is /etc/bossd.yaml
+    configuration file. By default bossrun will try ./bossrun.yaml,
+    ./boss.yaml, ./config/bossrun.yaml, ./config/boss.yaml and will fall back
+    to /etc/bossd.yaml if neither exists.
 
   -T
     run bosstree after running command, note bosstree will be run continuously,

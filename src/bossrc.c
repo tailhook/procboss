@@ -7,11 +7,20 @@
 #include <sys/uio.h>
 #include <fcntl.h>
 #include <getopt.h>
+#include <errno.h>
 
 #include "linenoise.h"
 #include "config.h"
 #include "bossruncmd.h"
 #include "shellutil.h"
+
+char *config_filenames[] = {
+    "./bossrun.yaml",
+    "./boss.yaml",
+    "./config/bossrun.yaml",
+    "./config/boss.yaml",
+    NULL
+    };
 
 config_main_t config;
 
@@ -41,6 +50,50 @@ void run_shell(int fifofd) {
         }
         free(line);
     }
+}
+
+void parse_config(config_main_t *cfg, int argc, char **argv, char **filename) {
+    coyaml_context_t ctx;
+    if(config_context(&ctx, cfg) < 0) {
+        perror(argv[0]);
+        exit(1);
+    }
+
+    if(!getenv("BOSS_CONFIG")) {
+        for(char **fn = &config_filenames[0]; *fn; ++fn) {
+            if(!access(*fn, F_OK)) {
+                ctx.root_filename = *fn;
+                break;
+            }
+        }
+    }
+
+    // sorry, fixing shortcommings of coyaml
+    ctx.cmdline->full_description = "";
+    if(coyaml_cli_prepare(&ctx, argc, argv)) {
+        if(errno == ECOYAML_CLI_HELP) {
+            char *fname = strrchr(argv[0], '/');
+            if(!fname) {
+                fname = argv[0];
+            } else {
+                fname += 1;
+            }
+            execlp("man", "man", fname, NULL);
+        }
+        if(errno > ECOYAML_MAX || errno < ECOYAML_MIN) {
+            perror(argv[0]);
+        }
+        config_free(cfg);
+        coyaml_context_free(&ctx);
+        exit(1);
+    }
+    coyaml_readfile_or_exit(&ctx);
+    coyaml_env_parse_or_exit(&ctx);
+    coyaml_cli_parse_or_exit(&ctx, argc, argv);
+    if(filename) {
+        *filename = realpath(ctx.root_filename, NULL);
+    }
+    coyaml_context_free(&ctx);
 }
 
 int main(int argc, char *argv[]) {

@@ -115,6 +115,7 @@ def build(bld):
         source='doc/bossrc.rst', target='doc/bossrc.1')
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
         source='doc/bosstree.rst', target='doc/bosstree.1')
+    bld.add_group()
     bld(rule='${GZIP} -f ${SRC}',
         source='doc/bossd.8', target='doc/bossd.8.gz')
     bld(rule='${GZIP} -f ${SRC}',
