@@ -460,10 +460,25 @@ void fix_environ(char **argv) {
     }
 }
 
+void checkdir(char *filename) {
+    char dirname[strlen(filename)+1];
+    strcpy(dirname, filename);
+    char *lastslash = strrchr(dirname, '/');
+    if(lastslash) {
+        *lastslash = 0;
+    }
+    if(access(dirname, F_OK)) {
+        mkdir(dirname, 0770);
+    }
+}
+
 int main(int argc, char **argv) {
     recover_args = argv;
     read_config(argc, argv);
     fix_environ(argv);
+    if(config.bossd.logging.file) {
+        checkdir(config.bossd.logging.file);
+    }
     openlogs();
 
     // This is very early because closes unneeded sockets
@@ -477,9 +492,11 @@ int main(int argc, char **argv) {
     jiffie = sysconf(_SC_CLK_TCK);
     LRECOVER("Starting");
     if(config.bossd.fifo_len) {
+        checkdir(config.bossd.fifo);
         init_control(config.bossd.fifo);
     }
     if(config.bossd.pid_file_len) {
+        checkdir(config.bossd.pid_file);
         write_pid(config.bossd.pid_file);
     }
     recover_processes();
