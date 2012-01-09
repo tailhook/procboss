@@ -21,8 +21,6 @@ build() {
 package() {
   cd $srcdir/$pkgname-$pkgver
   ./waf install --destdir=$pkgdir
-  install -d -m755 $pkgdir/var/log/boss
-  install -d -m755 $pkgdir/var/run/boss
   install -d -m755 $pkgdir/usr/share/procboss/examples
   install -m644 ./examples/services/* "$pkgdir/usr/share/$pkgname/examples"
   install -D -m644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
