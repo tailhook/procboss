@@ -1,3 +1,4 @@
+#define _BSD_SOURCE
 #define _XOPEN_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
