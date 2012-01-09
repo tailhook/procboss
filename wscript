@@ -41,7 +41,7 @@ def build(bld):
         target       = 'bossrun',
         includes     = ['src'],
         cflags       = ['-std=gnu99', '-Wall'],
-        lib          = ['yaml', 'coyaml'],
+        lib          = ['coyaml', 'yaml'],
         )
     bld(
         features     = ['c', 'cprogram', 'coyaml'],
@@ -60,7 +60,7 @@ def build(bld):
         target       = 'bossd',
         includes     = ['src'],
         cflags       = ['-std=gnu99', '-Wall'],
-        lib          = ['yaml', 'coyaml'],
+        lib          = ['coyaml', 'yaml'],
         )
     bld(
         features     = ['c', 'cprogram', 'coyaml'],
@@ -74,7 +74,7 @@ def build(bld):
         target       = 'bossrc',
         includes     = ['src', 'linenoise'],
         cflags       = ['-std=gnu99', '-Wall'],
-        lib          = ['yaml', 'coyaml'],
+        lib          = ['coyaml', 'yaml'],
         defines      = [ 'NOACTIONS' ],
         )
     bld(
@@ -90,7 +90,7 @@ def build(bld):
         target       = 'bossctl',
         includes     = ['src', 'linenoise'],
         cflags       = ['-std=gnu99', '-Wall'],
-        lib          = ['yaml', 'coyaml'],
+        lib          = ['coyaml', 'yaml'],
         defines      = [ 'NOACTIONS' ],
         )
     bld(
