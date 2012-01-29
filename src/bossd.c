@@ -403,6 +403,7 @@ void main_loop() {
         } else if(!stopping && (last_rotation != (long)(time / rot_time)
                                 || logsize() > rot_size)) {
             rotatelogs();
+            last_rotation = (long)(time / rot_time);
         }
         double next_time = 0;
         if(!stopping) {
