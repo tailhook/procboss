@@ -10,7 +10,7 @@ APPNAME='procboss'
 if os.path.exists('.git'):
     VERSION=subprocess.getoutput('git describe').lstrip('v').replace('-', '_')
 else:
-    VERSION='0.2.9'
+    VERSION='0.2.10'
 
 top = '.'
 out = 'build'
