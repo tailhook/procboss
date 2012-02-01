@@ -214,7 +214,7 @@ def upload(ctx):
     import urllib.parse
     from http.client import HTTPSConnection, HTTPConnection
     import json
-    distfile = APPNAME + '-' + VERSION + '.tar.bz2'
+    distfile = APPNAME + '-' + VERSION + '.tar.gz'
     with open(distfile, 'rb') as f:
         distdata = f.read()
     md5 = hashlib.md5(distdata).hexdigest()
