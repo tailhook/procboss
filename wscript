@@ -115,17 +115,21 @@ def build(bld):
         source='doc/bossrc.rst', target='doc/bossrc.1')
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
         source='doc/bosstree.rst', target='doc/bosstree.1')
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/procboss.rst', target='doc/procboss.5')
     bld.add_group()
-    bld(rule='${GZIP} -f ${SRC}',
+    bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
         source='doc/bossd.8', target='doc/bossd.8.gz')
-    bld(rule='${GZIP} -f ${SRC}',
+    bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
         source='doc/bossctl.8', target='doc/bossctl.8.gz')
-    bld(rule='${GZIP} -f ${SRC}',
+    bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
         source='doc/bossrun.1', target='doc/bossrun.1.gz')
-    bld(rule='${GZIP} -f ${SRC}',
+    bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
         source='doc/bossrc.1', target='doc/bossrc.1.gz')
-    bld(rule='${GZIP} -f ${SRC}',
+    bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
         source='doc/bosstree.1', target='doc/bosstree.1.gz')
+    bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
+        source='doc/procboss.5', target='doc/procboss.5.gz')
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossrc',
         'completion/zsh_bossrc')
     bld.install_as('${PREFIX}/share/zsh/site-functions/_bossctl',
@@ -140,6 +144,8 @@ def build(bld):
         ['doc/bossd.8.gz', 'doc/bossctl.8.gz'])
     bld.install_files('${PREFIX}/share/man/man1',
         ['doc/bossrun.1.gz', 'doc/bossrc.1.gz', 'doc/bosstree.1.gz'])
+    bld.install_files('${PREFIX}/share/man/man5',
+        ['doc/procboss.5.gz'])
 
 
 def dist(ctx):
