@@ -8,6 +8,7 @@ arch=('i686' 'x86_64')
 url="http://github.com/tailhook/procboss"
 license=('MIT')
 makedepends=('coyaml' 'docutils')
+depends=('libyaml')
 backup=("etc/bossd.yaml")
 source=(https://github.com/downloads/tailhook/procboss/$pkgname-$pkgver.tar.gz)
 md5sums=('${DIST_MD5}')

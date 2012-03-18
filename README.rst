@@ -39,3 +39,27 @@ have the following implications:
   vulnerability is tradeoff of being very robust, and it's quite hard to
   exploit for our setup, but you have been warned!)
 
+Dependencies
+------------
+
+Runtime dependencies:
+
+    * libyaml
+
+Build dependencies:
+
+    * python3
+    * coyaml
+    * docutils (for python3)
+
+Building
+--------
+
+Basic workflow is the following::
+
+    git clone git://github.com/tailhook/procboss.git
+    cd procboss
+    git submodule update --init
+    ./waf configure --prefix=/usr
+    ./waf build
+    sudo ./waf install
