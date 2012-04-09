@@ -212,7 +212,7 @@ static char *substitute(char *str, int val) {
                 value = seq1;
                 strip = 7;
             } else {
-                *p = *c;
+                *p++ = *c;
                 continue;
             }
             char *no = realloc(output, curlen-strip+strlen(seq0));
