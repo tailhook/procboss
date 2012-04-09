@@ -56,7 +56,7 @@ the following options:
 Description
 -----------
 
-Configuration file is normal YAML_ file. It has three main sections::
+Configuration file is normal YAML_ file. It has four main sections::
 
     bossrun:
       # configuration of bossrun process supervisor
@@ -74,12 +74,69 @@ TBD: describe basic rules
 Bossrun
 -------
 
-TBD
+This section is only used when using ``bossrun`` binary. Two useful options
+here:
+
+failfast: yes|no
+    Stop all processes and shutdown if one of the processes is dead (unless
+    this particular process is scheduled for restart by manual command)
+
+restart: yes|no
+    Restart dead processes (only useful if failfast is set to ``yes``)
+
+.. note::
+
+   bossrun is used for debugging purposes, so it's useful to see dead processes
+   in the hard way. Bossd has no failfast or no restart mode.
+
 
 Bossd
 -----
 
-TBD
+This section is only used when using ``bossd`` binary.
+
+fifo: PATH
+    Where to put control fifo. Fifo is used by ``bossctl`` to communicate with
+    bossd instance. Please don't use a word-writable directory as its insecure
+
+pid-file: PATH
+    Path to file which contains pid of bossd process. Pid file is not used
+    by boss, but can be used for other utilities
+
+logging:
+    Logging subsection controls logging of bossd
+
+    file: PATH
+        Path to logfile
+
+    mode: 0644
+        Mode of logfile, use 0-prefixed digits to have convenient octal
+        notation
+
+    rotation-size: 10Mi
+        Maximum size of single log file, before it rotates. Use suffix as in
+        example to avoid writing long numbers in bytes
+
+    rotation-time: 604800
+        Time in seconds of maximum time log can be written to without rotation
+
+    rotation-backups: 9
+        Number of backups to keep after rotating file
+
+timeouts:
+    Time constraints for process restart. The following are default values::
+
+        successful-run: 10
+        small-restart: 0.1
+        retries: 2
+        big-restart: 120
+
+    If process dies, bossd tries to restart it after a ``small-restart``
+    timeout (in seconds). If process dies again for ``retries`` number of
+    times, then bossd switches to a ``big-restart`` timeout. And as you
+    might guessed, process is considered to be started successfully if has been
+    run for at least ``successful-run`` seconds.
+
 
 Bossctl
 -------
