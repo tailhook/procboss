@@ -7,7 +7,7 @@ process supervisor daemon
 -------------------------
 
 :Author: Paul Colomiets <paul@colomiets.name>
-:Date: 2011
+:Date: 2012
 :Manual section: 5
 
 Synopsis
@@ -69,7 +69,14 @@ Configuration file is normal YAML_ file. It has four main sections::
 
 Each section will be described in details further.
 
-TBD: describe basic rules
+Basically everyting inside a single section must be indented with spaces at
+the start of line. Indentation can be nested. Simple strings can be written
+as is, but when in doubt you should use double quotes surrounding text.
+
+Strings immediately before colon used as keys (or fields). Keys starting
+with underscore are ignored, so may be used to comment out section or as
+a place to put anchors into (see YAML_ documentation for more information
+about anchors).
 
 Bossrun
 -------
