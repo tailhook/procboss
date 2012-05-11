@@ -21,6 +21,7 @@ __types__:
       File: 0
       Tcp: 1
       UnixSocket: 2
+      Icmp: 3
     path: !String
       default: ""
       description: >

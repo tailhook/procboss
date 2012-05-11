@@ -76,6 +76,8 @@ static void open_files(config_process_t *process) {
             }
         } else if(item->value.type == CONFIG_File) {
             tfd = open_file(&item->value);
+        } else if(item->value.type == CONFIG_Icmp) {
+            tfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
         } else {
             assert(0);
         }
