@@ -382,7 +382,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         printf("%d", child->pid);
     }
     if(options->show_uptime) {
-        COLOR(FORE_BLUE);
+        COLOR(FORE_BLUE);COLOR(BRIGHT);
         COMMA;
         int uptime = child->up_time / options->jiffie;
         if(uptime > 86400) {
@@ -399,13 +399,13 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_RESET);
     }
     if(options->show_threads) {
-        COLOR(FORE_BLUE);
+        COLOR(FORE_BLUE);COLOR(BRIGHT);
         COMMA;
         printf("%ld threads", child->threads);
         COLOR(FORE_RESET);
     }
     if(options->show_cpu) {
-        COLOR(FORE_BLUE)
+        COLOR(FORE_BLUE);COLOR(BRIGHT);
         COMMA;
         if(child->cpu) {
             printf("%4.1f%%", child->cpu*100);
@@ -415,7 +415,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_RESET);
     }
     if(options->show_rss) {
-        COLOR(FORE_BLUE)
+        COLOR(FORE_BLUE);COLOR(BRIGHT);
         COMMA;
         long rss = child->rss * options->pagesize;
         if(rss > 10000000000) {
@@ -430,7 +430,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_RESET);
     }
     if(options->show_vsize) {
-        COLOR(FORE_BLUE)
+        COLOR(FORE_BLUE);COLOR(BRIGHT);
         COMMA;
         long rss = child->vsize;
         if(rss > 10000000000) {
