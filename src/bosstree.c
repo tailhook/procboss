@@ -600,7 +600,8 @@ void sort_processes(process_info_t *tbl, int num) {
                     entry = malloc(sizeof(entry_t));
                     entry->status = S_STALLED;
                     TAILQ_INSERT_TAIL(&tbl[i].entries, entry, entries);
-                    entry->name = child->name;
+                    entry->name = strdup(child->name);
+                    TAILQ_INIT(&entry->running);
                     TAILQ_INSERT_TAIL(&entry->running, child, runentry);
                 }
                 if(child->bosspid == tbl[i].pid) {
