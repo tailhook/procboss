@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/file.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <fnmatch.h>
@@ -23,34 +24,64 @@ bool ignore = FALSE;
 
 void init_control(char *fifo) {
     int res;
+
+    char fifolock[strlen(fifo)+6];
+    strcpy(fifolock, fifo);
+    strcat(fifolock, ".lock");
+    int tmpfd = open(fifolock, O_WRONLY|O_NONBLOCK|O_CREAT);
+    if(tmpfd <= 0) {
+        LCRITICAL("Can't open fifo lock file");
+        perror("Can't open fifo lock file");
+        exit(1);
+    }
+    res = fcntl(tmpfd, F_SETFD, FD_CLOEXEC);
+    if(res < 0) {
+        LCRITICAL("Can't set cloexec flag");
+        perror("Can't set cloexec flag");
+        exit(1);
+    }
+    res = flock(tmpfd, LOCK_EX|LOCK_NB);
+    if(res < 0) {
+        LCRITICAL("Can't lock control pipe");
+        perror("Can't lock control pipe");
+        exit(1);
+    }
+
     unlink(fifo);
     if(mkfifo(fifo, 0777)) {
+        LCRITICAL("Can't make control fifo");
         perror("Can't make control fifo");
-        abort();
+        exit(1);
     }
 
     control_fd = open(fifo, O_RDONLY|O_NONBLOCK);
     if(control_fd < 0) {
+        LCRITICAL("Can't open fifo");
         perror("Can't open fifo");
-        abort();
+        exit(1);
     }
+
+
     res = fcntl(control_fd, F_SETFD, FD_CLOEXEC);
     if(res < 0) {
+        LCRITICAL("Can't set cloexec flag");
         perror("Can't set cloexec flag");
-        abort();
+        exit(1);
     }
 
     // Second file descriptor is opened to leave pipe usable even after
     // actual writer closed pipe (would need to reopen pipe otherwise)
     ctl_write_fd = open(fifo, O_WRONLY|O_NONBLOCK);
     if(ctl_write_fd < 0) {
+        LCRITICAL("Failed to open write end of fifo");
         perror("Failed to open write end of fifo");
-        abort();
+        exit(1);
     }
     res = fcntl(ctl_write_fd, F_SETFD, FD_CLOEXEC);
     if(res < 0) {
-        perror("Can't set cloexec flag");
-        abort();
+        LCRITICAL("Can't set cloexec flag on fifo");
+        perror("Can't set cloexec flag on fifo");
+        exit(1);
     }
 }
 

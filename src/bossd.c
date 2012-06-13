@@ -476,6 +476,7 @@ void checkdir(char *filename) {
 int main(int argc, char **argv) {
     recover_args = argv;
     read_config(argc, argv);
+
     fix_environ(argv);
     if(config.bossd.logging.file) {
         checkdir(config.bossd.logging.file);
