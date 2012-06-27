@@ -28,7 +28,7 @@ void init_control(char *fifo) {
     char fifolock[strlen(fifo)+6];
     strcpy(fifolock, fifo);
     strcat(fifolock, ".lock");
-    int tmpfd = open(fifolock, O_WRONLY|O_NONBLOCK|O_CREAT);
+    int tmpfd = open(fifolock, O_WRONLY|O_NONBLOCK|O_CREAT, 0600);
     if(tmpfd <= 0) {
         LCRITICAL("Can't open fifo lock file");
         perror("Can't open fifo lock file");
