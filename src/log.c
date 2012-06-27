@@ -47,7 +47,7 @@ void logmsg(int level, char *msg, ...) {
         idx = 4094;
     }
     buf[idx++] = '\n';
-    write(logfile, buf, idx);
+    (void)write(logfile, buf, idx);
 }
 
 void logstd(int level, char *msg, ...) {
@@ -79,7 +79,7 @@ void logstd(int level, char *msg, ...) {
         idx = 4094;
     }
     buf[idx++] = '\n';
-    write(logfile, buf, idx);
+    (void)write(logfile, buf, idx);
 }
 
 void setcloexec(int fd) {
