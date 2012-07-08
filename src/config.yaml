@@ -50,6 +50,31 @@ __types__:
     _fd: !Int
       default: -1
 
+  scheduling:
+    __tags__:
+      __property__: policy
+      __default__: Sched.NoChange
+      Sched.NoChange: 0
+      Sched.Normal: 1
+      Sched.RT.FIFO: 2
+      Sched.RT.RoundRobin: 3
+      Sched.Batch: 4
+      Sched.Idle: 5
+    nice: !Int
+      min: -20
+      max: 19
+      default: 0
+      description: Niceness of the process
+    affinity: !Array
+      element: !Int
+        min: 0
+        max: 1048576
+      description: List of processors where this process may run
+    rt-priority: !UInt
+      default: 0
+      max: 99
+      description: Priority for Real-Time scheduled process
+
   process:
     tags: !Array
       element: !String
@@ -176,6 +201,9 @@ __types__:
       default: 0
       description: >
         Umask to set for the process.
+
+    scheduling: !Struct scheduling
+
     environ: !Mapping
       key-element: !String
       value-element: !String

@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
+#include <sched.h>
 
 #include "runcommand.h"
 #include "log.h"
@@ -253,6 +254,41 @@ static char *substitute(char *str, int val) {
     return output;
 }
 
+void set_scheduling(config_process_t *proc) {
+    int rc;
+    rc = setpriority(PRIO_PROCESS, 0, proc->scheduling.nice);
+    if(!rc)
+        logstd(LOG_STARTUP, "Can't set niceness %d: %s",
+            proc->scheduling.nice, strerror(errno));
+    if(proc->scheduling.affinity_len) {
+        cpu_set_t cpuset;
+        CPU_ZERO(&cpuset);
+        CONFIG_LONG_LOOP(item, proc->scheduling.affinity) {
+            CPU_SET(item->value, &cpuset);
+        }
+        rc = sched_setaffinity(0, sizeof(cpuset), &cpuset);
+        if(!rc)
+            logstd(LOG_STARTUP, "Can't set CPU affinity: %s", strerror(errno));
+    }
+    if(proc->scheduling.policy != 0) {
+        int policy = SCHED_OTHER;
+        switch(proc->scheduling.policy) {
+        case CONFIG_Sched_NoChange: assert(0); break;
+        case CONFIG_Sched_Normal: policy = SCHED_OTHER; break;
+        case CONFIG_Sched_RT_FIFO: policy = SCHED_FIFO; break;
+        case CONFIG_Sched_RT_RoundRobin: policy = SCHED_RR; break;
+        case CONFIG_Sched_Batch: policy = SCHED_BATCH; break;
+        case CONFIG_Sched_Idle: policy = SCHED_IDLE; break;
+        }
+        struct sched_param param;
+        memset(&param, 0, sizeof(param));
+        param.sched_priority = proc->scheduling.rt_priority;
+        rc = sched_setscheduler(0, policy, &param);
+        if(!rc)
+            logstd(LOG_STARTUP, "Can't set scheduling: %s", strerror(errno));
+    }
+}
+
 void do_run(config_process_t *process, int parentpid, int instance_index) {
     int i;
     sigset_t mask;
@@ -261,6 +297,7 @@ void do_run(config_process_t *process, int parentpid, int instance_index) {
 
     open_files(process);
     set_limits(process);
+    set_scheduling(process);
     drop_privileges(process);
 
     if(process->umask > 0) {
