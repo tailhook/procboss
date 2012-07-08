@@ -6,7 +6,8 @@ Process boss is a tiny supervisor program.
 Features:
 
 * Running programs and restarting on crash
-* Setting environment, uid, chroot without running tons of external utilities
+* Setting environment, uid, chroot, scheduling, affinity without running tons
+  of external utilities
 * Opening files and providing them as file descriptors (useful to bind to
   tcp port < 1024 or for fastcgi programs)
 * Fast restart in case of crash (reaping SIGCHLD)
