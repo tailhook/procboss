@@ -25,6 +25,8 @@
 extern char *configuration_name;
 extern int configuration_name_len;
 
+#define SET_LIMIT(name, value) set_limit(#name, (name), (value))
+
 static inline int CHECK(int res, char *msg) {
     if(res < 0) {
         logstd(LOG_STARTUP, msg);
@@ -93,27 +95,47 @@ static void open_files(config_process_t *process) {
     close_all(process);
 }
 
-static void set_limit(int resource, unsigned long value) {
+static void set_limit(char *name, int resource, unsigned long value) {
     struct rlimit limit = { value, value };
-    setrlimit(resource, &limit);
+    int rc = setrlimit(resource, &limit);
+    if(rc < 0)
+        logstd(LOG_STARTUP, "Can't set limit %s: %s", name, strerror(errno));
 }
 
 static void set_limits(config_process_t *process)
 {
     if(process->limits.core)
-        set_limit(RLIMIT_CORE, process->limits.core);
+        SET_LIMIT(RLIMIT_CORE, process->limits.core);
     if(process->limits.cpu)
-        set_limit(RLIMIT_CPU, process->limits.cpu);
+        SET_LIMIT(RLIMIT_CPU, process->limits.cpu);
     if(process->limits.data)
-        set_limit(RLIMIT_DATA, process->limits.data);
+        SET_LIMIT(RLIMIT_DATA, process->limits.data);
     if(process->limits.fsize)
-        set_limit(RLIMIT_FSIZE, process->limits.fsize);
+        SET_LIMIT(RLIMIT_FSIZE, process->limits.fsize);
     if(process->limits.nofile)
-        set_limit(RLIMIT_NOFILE, process->limits.nofile);
+        SET_LIMIT(RLIMIT_NOFILE, process->limits.nofile);
     if(process->limits.stack)
-        set_limit(RLIMIT_STACK, process->limits.stack);
+        SET_LIMIT(RLIMIT_STACK, process->limits.stack);
     if(process->limits.as)
-        set_limit(RLIMIT_AS, process->limits.as);
+        SET_LIMIT(RLIMIT_AS, process->limits.as);
+    if(process->limits.locks >= 0)
+        SET_LIMIT(RLIMIT_LOCKS, process->limits.locks);
+    if(process->limits.memlock >= 0)
+        SET_LIMIT(RLIMIT_MEMLOCK, process->limits.memlock);
+    if(process->limits.msgqueue >= 0)
+        SET_LIMIT(RLIMIT_MSGQUEUE, process->limits.msgqueue);
+    if(process->limits.nice > -100)
+        SET_LIMIT(RLIMIT_NICE, 20 - process->limits.nice);
+    if(process->limits.nproc >= 0)
+        SET_LIMIT(RLIMIT_NPROC, process->limits.nproc);
+    if(process->limits.rss >= 0)
+        SET_LIMIT(RLIMIT_RSS, process->limits.rss);
+    if(process->limits.rtprio >= 0)
+        SET_LIMIT(RLIMIT_RTPRIO, process->limits.rtprio);
+    if(process->limits.rttime >= 0)
+        SET_LIMIT(RLIMIT_RTTIME, process->limits.rttime);
+    if(process->limits.sigpending >= 0)
+        SET_LIMIT(RLIMIT_SIGPENDING, process->limits.sigpending);
 }
 
 static void drop_privileges(config_process_t *process) {

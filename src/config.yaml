@@ -124,6 +124,43 @@ __types__:
         default: 0
         description: >
           Maximum address space size for a process (see man setrlimit)
+      # Linux-specific limits
+      locks: !Int
+        default: -1
+        description: >
+          Maximum number of locks process may establish
+      memlock: !Int
+        default: -1
+        description: >
+          Maximum number of bytes that may be locket into RAM
+      msgqueue: !Int
+        default: -1
+        description:
+          Maximum number of bytes that can be allocated for POSIX message
+          queues
+      nice: !Int
+        default: -100
+        description: Maximum process's nice value (unlike in setrlimit its in
+          range -20..19)
+      nproc: !Int
+        default: -1
+        description: Maximum number of processes that can be created by process
+      rss: !Int
+        default: -1
+        description: Maximum number or virtual pages in process's resident set
+          size
+      rtprio: !Int
+        default: -1
+        description: Maximum real-time priority for the process
+      rttime: !Int
+        default: -1
+        description: Maximum number of microseconds that process can spent
+          before doing a blocking call (for real-time scheduling)
+      sigpending: !Int
+        default: -1
+        description: Maximum number of signals queued for sigqueue
+      # End of linux-specific signals
+
     executable-path: !File
       description: >
         Path to executable to run. Full path is used for security
