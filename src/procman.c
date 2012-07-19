@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <stropts.h>
 #include <termios.h>
 
 #include "procman.h"

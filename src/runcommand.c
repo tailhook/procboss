@@ -134,7 +134,11 @@ static void set_limits(config_process_t *process)
     if(process->limits.rtprio >= 0)
         SET_LIMIT(RLIMIT_RTPRIO, process->limits.rtprio);
     if(process->limits.rttime >= 0)
+# ifdef RLIMIT_RTTIME
         SET_LIMIT(RLIMIT_RTTIME, process->limits.rttime);
+# else
+        logstd(LOG_STARTUP, "Can't set RLIMIT_RTTIME: no compiled-in support");
+# endif
     if(process->limits.sigpending >= 0)
         SET_LIMIT(RLIMIT_SIGPENDING, process->limits.sigpending);
 }
@@ -277,7 +281,15 @@ void set_scheduling(config_process_t *proc) {
         case CONFIG_Sched_RT_FIFO: policy = SCHED_FIFO; break;
         case CONFIG_Sched_RT_RoundRobin: policy = SCHED_RR; break;
         case CONFIG_Sched_Batch: policy = SCHED_BATCH; break;
-        case CONFIG_Sched_Idle: policy = SCHED_IDLE; break;
+        case CONFIG_Sched_Idle:
+# ifdef SCHED_IDLE
+            policy = SCHED_IDLE;
+# else
+            logstd(LOG_STARTUP, "Can't set SHED_IDLE, no compiled-in suppport."
+	    			" Using SHED_BATCH instead");
+            policy = SCHED_BATCH;
+# endif
+            break;
         }
         struct sched_param param;
         memset(&param, 0, sizeof(param));
