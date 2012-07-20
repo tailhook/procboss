@@ -100,7 +100,7 @@ static void set_limit(char *name, int resource, unsigned long value) {
     struct rlimit limit = { value, value };
     int rc = setrlimit(resource, &limit);
     if(rc < 0)
-        logstd(LOG_STARTUP, "Can't set limit %s: %s", name, strerror(errno));
+        logstd(LOG_STARTUP, "Can't set limit %s", name);
 }
 
 static void set_limits(config_process_t *process)
@@ -257,9 +257,8 @@ static char *substitute(char *str, int val) {
 void set_scheduling(config_process_t *proc) {
     int rc;
     rc = setpriority(PRIO_PROCESS, 0, proc->scheduling.nice);
-    if(!rc)
-        logstd(LOG_STARTUP, "Can't set niceness %d: %s",
-            proc->scheduling.nice, strerror(errno));
+    if(rc < 0)
+        logstd(LOG_STARTUP, "Can't set niceness %d", proc->scheduling.nice);
     if(proc->scheduling.affinity_len) {
         cpu_set_t cpuset;
         CPU_ZERO(&cpuset);
@@ -268,7 +267,7 @@ void set_scheduling(config_process_t *proc) {
         }
         rc = sched_setaffinity(0, sizeof(cpuset), &cpuset);
         if(!rc)
-            logstd(LOG_STARTUP, "Can't set CPU affinity: %s", strerror(errno));
+            logstd(LOG_STARTUP, "Can't set CPU affinity");
     }
     if(proc->scheduling.policy != 0) {
         int policy = SCHED_OTHER;
@@ -285,7 +284,7 @@ void set_scheduling(config_process_t *proc) {
         param.sched_priority = proc->scheduling.rt_priority;
         rc = sched_setscheduler(0, policy, &param);
         if(!rc)
-            logstd(LOG_STARTUP, "Can't set scheduling: %s", strerror(errno));
+            logstd(LOG_STARTUP, "Can't set scheduling");
     }
 }
 
