@@ -45,6 +45,7 @@ Dependencies
 
 Runtime dependencies:
 
+    * linux kernel 2.6.27 (needs signalfd)
     * libyaml
 
 Build dependencies:
