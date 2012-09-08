@@ -105,6 +105,14 @@ def build(bld):
         cflags       = ['-std=gnu99', '-Wall'],
         lib          = ['coyaml', 'yaml'],
         )
+    bld(
+        features     = ['c', 'cshlib'],
+        source       = [
+            'src/bossname.c',
+            ],
+        target       = 'bossname',
+        cflags       = ['-std=gnu99', '-Wall'],
+        )
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
         source='doc/bossd.rst', target='doc/bossd.8')
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
@@ -117,6 +125,8 @@ def build(bld):
         source='doc/bosstree.rst', target='doc/bosstree.1')
     bld(rule='${RST2MAN} ${SRC} ${TGT}',
         source='doc/procboss.rst', target='doc/procboss.5')
+    bld(rule='${RST2MAN} ${SRC} ${TGT}',
+        source='doc/bossname.rst', target='doc/bossname.5')
     bld.add_group()
     bld(rule='${GZIP} -c -f ${SRC} > ${TGT}',
         source='doc/bossd.8', target='doc/bossd.8.gz')
