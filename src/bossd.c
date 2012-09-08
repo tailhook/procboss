@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/signalfd.h>
+#include <sys/prctl.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -501,6 +502,9 @@ int main(int argc, char **argv) {
         checkdir(config.bossd.pid_file);
         write_pid(config.bossd.pid_file);
     }
+#ifdef PR_SET_CHILD_SUBREAPER
+    prctl(PR_SET_CHILD_SUBREAPER, 1);
+#endif
     recover_processes();
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         while(item->value._entries.running < item->value.min_instances) {

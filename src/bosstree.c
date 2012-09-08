@@ -221,8 +221,10 @@ int parse_child_entry(int pid, char *data, int dlen, process_info_t *info) {
     info->mypid = childpid;
     info->instance_index = inst;
     if(info->pid == info->mypid) {
+        printf("DETACHED %d (%d)\n", info->pid, info->mypid);
         info->kind = DETACHED;
     } else {
+        printf("ANCESTOR %d (%d)\n", info->pid, info->mypid);
         info->kind = DETACHED_ANCESTOR;
     }
     return TRUE;
@@ -368,7 +370,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
 #define COLOR(a) if(!color && options->color) { printf("\033[%dm", (a)); }
 #define COMMA if(started) { putchar(','); } else { started = TRUE; }
     if(color && options->color) {
-        printf("\033[%dm", color);
+        printf("\033[%dm\033[%dm", BRIGHT, color);
     }
     if(options->show_name) {
         COMMA;
@@ -382,7 +384,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         printf("%d", child->pid);
     }
     if(options->show_uptime) {
-        COLOR(FORE_BLUE);COLOR(BRIGHT);
+        COLOR(FORE_BLUE);
         COMMA;
         int uptime = child->up_time / options->jiffie;
         if(uptime > 86400) {
@@ -399,13 +401,13 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_RESET);
     }
     if(options->show_threads) {
-        COLOR(FORE_BLUE);COLOR(BRIGHT);
+        COLOR(FORE_BLUE);
         COMMA;
         printf("%ld threads", child->threads);
         COLOR(FORE_RESET);
     }
     if(options->show_cpu) {
-        COLOR(FORE_BLUE);COLOR(BRIGHT);
+        COLOR(FORE_BLUE);
         COMMA;
         if(child->cpu) {
             printf("%4.1f%%", child->cpu*100);
@@ -415,7 +417,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_RESET);
     }
     if(options->show_rss) {
-        COLOR(FORE_BLUE);COLOR(BRIGHT);
+        COLOR(FORE_BLUE);
         COMMA;
         long rss = child->rss * options->pagesize;
         if(rss > 10000000000) {
@@ -430,7 +432,7 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
         COLOR(FORE_RESET);
     }
     if(options->show_vsize) {
-        COLOR(FORE_BLUE);COLOR(BRIGHT);
+        COLOR(FORE_BLUE);
         COMMA;
         long rss = child->vsize;
         if(rss > 10000000000) {
@@ -457,8 +459,8 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
             }
         }
     }
-    if(color && options->color) {
-        printf("\033[%dm", FORE_RESET);
+    if(options->color) {
+        printf("\033[%dm\033[%dm", FORE_RESET, DIM);
     }
 #undef COLOR
 #undef COMMA
@@ -501,7 +503,12 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
                             || child->status == S_ORPHAN) {
                             print_proc(proc, options, FORE_RED);
                         } else {
-                            print_proc(proc, options, 0);
+                            // TODO(tailhook) wrong decision
+                            if(proc->kind == BOSS_CHILD) {
+                                print_proc(proc, options, 0);
+                            } else {
+                                print_proc(proc, options, FORE_RED);
+                            }
                         }
                         printf("\n");
                     }
@@ -565,7 +572,8 @@ void sort_processes(process_info_t *tbl, int num) {
             TAILQ_INIT(&entry->running);
             for(process_info_t *child = TAILQ_FIRST(&tbl[i].children);
                 child; child=TAILQ_NEXT(child, chentry)) {
-                if(child->name && strcmp(child->name, item->key))
+                if((child->name && strcmp(child->name, item->key))
+                   || child->pid != child->mypid)
                     continue;
                 TAILQ_INSERT_TAIL(&entry->running, child, runentry);
                 entry->status = S_NORMAL;

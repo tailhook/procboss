@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/signalfd.h>
+#include <sys/prctl.h>
 #include <stdio.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -245,6 +246,9 @@ int main(int argc, char **argv) {
     if(config.bossrun.fifo_len) {
         init_control(config.bossrun.fifo);
     }
+#ifdef PR_SET_CHILD_SUBREAPER
+    prctl(PR_SET_CHILD_SUBREAPER, 1);
+#endif
     CONFIG_STRING_PROCESS_LOOP(item, config.Processes) {
         item->value._name = item->key;
         item->value._name_len = item->key_len;

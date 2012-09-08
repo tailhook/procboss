@@ -9,6 +9,7 @@
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <sys/prctl.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -306,6 +307,7 @@ void do_run(config_process_t *process, int parentpid, int instance_index) {
     sigfillset(&mask);
     sigprocmask(SIG_UNBLOCK, &mask, NULL);
 
+    CHECK(prctl(PR_SET_PDEATHSIG, SIGTERM), "Can't set deathsig");
     open_files(process);
     set_limits(process);
     set_scheduling(process);
