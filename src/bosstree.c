@@ -221,10 +221,8 @@ int parse_child_entry(int pid, char *data, int dlen, process_info_t *info) {
     info->mypid = childpid;
     info->instance_index = inst;
     if(info->pid == info->mypid) {
-        printf("DETACHED %d (%d)\n", info->pid, info->mypid);
         info->kind = DETACHED;
     } else {
-        printf("ANCESTOR %d (%d)\n", info->pid, info->mypid);
         info->kind = DETACHED_ANCESTOR;
     }
     return TRUE;
