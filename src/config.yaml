@@ -246,6 +246,7 @@ bossrun:
     environ-var: BOSSRUN_CONTROL
     description: >
       Filename of the fifo to read control messages from
+    command-line: [--fifo]
   stop-signals:
     sigint: !Bool
       default: yes
