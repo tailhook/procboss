@@ -367,8 +367,11 @@ void print_proc(process_info_t *child, bosstree_opt_t *options, int color) {
     int started = FALSE;
 #define COLOR(a) if(!color && options->color) { printf("\033[%dm", (a)); }
 #define COMMA if(started) { putchar(','); } else { started = TRUE; }
-    if(color && options->color) {
-        printf("\033[%dm\033[%dm", BRIGHT, color);
+    if(options->color) {
+        printf("\033[%dm", BRIGHT);
+        if(color) {
+            printf("\033[%dm", color);
+        }
     }
     if(options->show_name) {
         COMMA;
@@ -519,8 +522,9 @@ void print_processes(process_info_t *tbl, int num, bosstree_opt_t *options) {
                         }
                     }
                     if(options->color) {
-                        printf("\033[%dm%s,down\033[0m\n",
-                            FORE_RED, child->name);
+                        printf("\033[%dm\033[%dm%s,down\033[%dm\033[%dm\n",
+                            BRIGHT, FORE_RED, child->name,
+                            FORE_RESET, DIM);
                     } else {
                         printf("%s,down\n", child->name);
                     }
